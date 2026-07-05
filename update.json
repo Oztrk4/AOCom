@@ -1,11 +1,11 @@
 {
-  "version": "0.1.0",
-  "notes": "İlk sürüm — AOCom v0.1.0\n• P2P sesli/görüntülü sohbet ve metin kanalları\n• Push-to-Talk, tiyatro modu, mat tema motoru\n• Otomatik güncelleme sistemi aktif",
-  "pub_date": "2026-07-06T00:00:00Z",
+  "version": "0.2.0",
+  "notes": "AOCom v0.2.0\n• Admin paneli: üye aktif/pasif yönetimi\n• Kayıt kontrolü: yeni üyelik açma/kapama\n• \"En son görülme\" bilgisi arkadaş listesinde\n• Yasaklı kullanıcı girişleri engellendi",
+  "pub_date": "2026-07-06T00:30:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSUjJNNTBORVBOQkJ4Qy9yWUpCajBKRGJVdDVmeXc1d1MwNjIrRHhNV3FhQVF0d1I4MDJCM0pHS3VtZkNkV1k2MlNiL08xY1FoTisrNys3N3Z1T2JZV1VxSHdzdFFLbHcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMjg0MjExCWZpbGU6QU9Db21fMC4xLjBfeDY0LXNldHVwLmV4ZQptcjFUeWtmZmlKc3FBMXBOREZwY3YzYURkZFRqTGRzeWRWclFqc0pPMDZUcW9tdDRYNGsvNHJxT1ZFM1FOMFlvYmp0ZzNjMFhQcU5wM3EwT2FyQUxCUT09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.1.0/AOCom_0.1.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSUjJNNTBORVBOQlB5R0ZjZzllSGtnTFlNczEwOTBUZk51RnVZaUExdndVZFpyWGF0OFp3b24zWTNWSjVBNU41eXBROHlDejUwZ2g2T1hvZldES25EL1kwbm9ZMEVxNncwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMjg2OTQ2CWZpbGU6QU9Db21fMC4yLjBfeDY0LXNldHVwLmV4ZQpSM21DaWZ6ZzZQSmUrS0lDdVRVVXFQaHdoYUdrTldRQmpUMURqbUpYSkJrWVc5R0psbzRhWW1qbkR4TkY2WndOMFJOQ09ENmRvRUdlUUFHSllTQUdBdz09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.0/AOCom_0.2.0_x64-setup.exe"
     }
   }
 }
