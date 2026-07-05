@@ -9,6 +9,15 @@ export type InputMode = "voice" | "ptt";
 export const ADMIN_EMAIL = "samet.ozturk.uye@gmail.com";
 export const isAdminEmail = (email?: string | null): boolean =>
   email === ADMIN_EMAIL;
+
+/** Exact copy shown to banned users and to signups while intake is closed. */
+export const BAN_MESSAGE = "Girişiniz yasak yöneticiyle görüşün";
+
+export interface SystemSettings {
+  id: number;
+  is_registration_open: boolean;
+  updated_at: string;
+}
 export type ThemeName = "nordic" | "graphite" | "mutedcyber" | "tactical";
 
 export const THEME_NAMES: ThemeName[] = [
@@ -31,6 +40,8 @@ export interface Profile {
   id: string;
   nickname: string;
   avatar_url: string | null;
+  is_active?: boolean;
+  last_seen_at?: string | null;
   updated_at?: string;
 }
 

@@ -2,6 +2,7 @@
 import { useAppStore } from "@/stores/app-store";
 import { Avatar } from "@/components/ui/Avatar";
 import { PhoneIcon, SpeakerIcon } from "@/components/ui/icons";
+import { formatLastSeen } from "@/lib/time";
 
 export function FriendsList({
   userId,
@@ -75,7 +76,7 @@ export function FriendsList({
                   ) : online ? (
                     "Online"
                   ) : (
-                    "Offline"
+                    formatLastSeen(f.last_seen_at)
                   )}
                 </p>
               </div>

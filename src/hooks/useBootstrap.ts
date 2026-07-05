@@ -2,7 +2,13 @@
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAppStore } from "@/stores/app-store";
-import type { ActiveStatus, Channel, Profile } from "@/lib/types";
+import { BAN_MESSAGE, type ActiveStatus, type Channel, type Profile } from "@/lib/types";
+
+/** Ban enforcement: force the session out and leave the notice behind. */
+async function kickBanned() {
+  useAppStore.getState().setBanNotice(BAN_MESSAGE);
+  await supabase.auth.signOut();
+}
 
 /**
  * Loads channels, all squad profiles and voice/online statuses once after
@@ -35,7 +41,13 @@ export function useBootstrap(userId: string | null) {
       if (profiles) {
         setProfiles(profiles as Profile[]);
         const me = (profiles as Profile[]).find((p) => p.id === userId);
-        if (me) setProfile(me);
+        if (me) {
+          if (me.is_active === false) {
+            void kickBanned();
+            return;
+          }
+          setProfile(me);
+        }
       }
       if (channels) {
         setChannels(channels as Channel[]);
@@ -62,7 +74,14 @@ export function useBootstrap(userId: string | null) {
           if (payload.new && "id" in payload.new) {
             const p = payload.new as Profile;
             upsertProfile(p);
-            if (p.id === userId) setProfile(p);
+            if (p.id === userId) {
+              // Live ban: admin flips the switch → kicked mid-session.
+              if (p.is_active === false) {
+                void kickBanned();
+                return;
+              }
+              setProfile(p);
+            }
           }
         }
       )

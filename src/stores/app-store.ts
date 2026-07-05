@@ -41,6 +41,9 @@ interface AppState {
   pttKey: string | null;
   /** True while the PTT key is held (incl. the release hang time). */
   pttActive: boolean;
+  adminOpen: boolean;
+  /** Ban notice shown on the login screen after a forced sign-out. */
+  banNotice: string | null;
 
   setProfile: (p: Profile | null) => void;
   setProfiles: (list: Profile[]) => void;
@@ -65,6 +68,8 @@ interface AppState {
   setInputMode: (m: InputMode) => void;
   setPttKey: (k: string | null) => void;
   setPttActive: (v: boolean) => void;
+  setAdminOpen: (v: boolean) => void;
+  setBanNotice: (msg: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -96,6 +101,8 @@ export const useAppStore = create<AppState>((set) => ({
   pttKey:
     typeof window !== "undefined" ? localStorage.getItem("aocom-ptt-key") : null,
   pttActive: false,
+  adminOpen: false,
+  banNotice: null,
 
   setProfile: (profile) => set({ profile }),
   setProfiles: (list) =>
@@ -144,6 +151,8 @@ export const useAppStore = create<AppState>((set) => ({
     set({ pttKey, pttActive: false });
   },
   setPttActive: (pttActive) => set({ pttActive }),
+  setAdminOpen: (adminOpen) => set({ adminOpen }),
+  setBanNotice: (banNotice) => set({ banNotice }),
 }));
 
 /**

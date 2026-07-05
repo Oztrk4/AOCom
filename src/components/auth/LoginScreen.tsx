@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Titlebar } from "@/components/layout/Titlebar";
+import { useAppStore } from "@/stores/app-store";
 
 export function LoginScreen({
   signIn,
@@ -15,10 +16,14 @@ export function LoginScreen({
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Shown when a live ban kicked the session out (set in useBootstrap).
+  const banNotice = useAppStore((s) => s.banNotice);
+  const setBanNotice = useAppStore((s) => s.setBanNotice);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setBanNotice(null);
     setBusy(true);
     const err =
       mode === "login"
@@ -81,9 +86,9 @@ export function LoginScreen({
             required
           />
 
-          {error && (
+          {(error ?? banNotice) && (
             <p className="rounded-md bg-danger/10 px-3 py-2 text-xs text-danger">
-              {error}
+              {error ?? banNotice}
             </p>
           )}
 

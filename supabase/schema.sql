@@ -9,8 +9,18 @@ create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   nickname text not null,
   avatar_url text,
+  is_active boolean not null default true,
+  last_seen_at timestamptz,
   updated_at timestamptz not null default now()
 );
+
+-- Single-row app configuration (registration gate etc.)
+create table public.system_settings (
+  id int primary key default 1 check (id = 1),
+  is_registration_open boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+insert into public.system_settings (id) values (1);
 
 create table public.channels (
   id uuid primary key default gen_random_uuid(),
@@ -47,6 +57,16 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Registration gate: when intake is closed only the admin may sign up.
+  if not coalesce(
+       (select is_registration_open from public.system_settings where id = 1),
+       true
+     )
+     and new.email is distinct from 'samet.ozturk.uye@gmail.com'
+  then
+    raise exception 'registration_closed';
+  end if;
+
   insert into public.profiles (id, nickname)
   values (
     new.id,
@@ -56,6 +76,20 @@ begin
   values (new.id, false);
   return new;
 end;
+$$;
+
+-- Ban check helper (security definer so RLS can consult profiles).
+create or replace function public.is_active_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select is_active from public.profiles where id = auth.uid()),
+    false
+  );
 $$;
 
 create trigger on_auth_user_created
@@ -75,6 +109,18 @@ create policy "profiles readable by members"
 create policy "update own profile"
   on public.profiles for update to authenticated
   using (auth.uid() = id) with check (auth.uid() = id);
+create policy "admin manages profiles"
+  on public.profiles for update to authenticated
+  using ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com');
+
+alter table public.system_settings enable row level security;
+create policy "settings readable"
+  on public.system_settings for select to anon, authenticated using (true);
+create policy "admin updates settings"
+  on public.system_settings for update to authenticated
+  using ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com')
+  with check ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com');
 
 create policy "channels readable by members"
   on public.channels for select to authenticated using (true);
@@ -89,7 +135,7 @@ create policy "messages readable by members"
   on public.messages for select to authenticated using (true);
 create policy "send messages as yourself"
   on public.messages for insert to authenticated
-  with check (auth.uid() = user_id);
+  with check (auth.uid() = user_id and public.is_active_user());
 create policy "delete own messages"
   on public.messages for delete to authenticated
   using (auth.uid() = user_id);

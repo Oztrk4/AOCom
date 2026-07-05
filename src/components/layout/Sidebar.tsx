@@ -14,6 +14,7 @@ import {
   MicOffIcon,
   PencilIcon,
   PlusIcon,
+  ShieldIcon,
   SpeakerIcon,
   TrashIcon,
   XIcon,
@@ -45,6 +46,7 @@ export function Sidebar({
     setMuted,
     setDeafened,
     setSettingsOpen,
+    setAdminOpen,
   } = useAppStore();
 
   // Admin CRUD state (buttons render only for the admin; RLS is the guard)
@@ -341,6 +343,16 @@ export function Sidebar({
             <HeadphonesIcon width={15} height={15} />
           )}
         </button>
+        {isAdmin && (
+          <button
+            onClick={() => setAdminOpen(true)}
+            className="rounded p-1.5 text-text-1 transition-colors hover:bg-bg-2 hover:text-accent"
+            aria-label="Admin panel"
+            title="Admin Panel"
+          >
+            <ShieldIcon width={15} height={15} />
+          </button>
+        )}
         <button
           onClick={() => setSettingsOpen(true)}
           className="rounded p-1.5 text-text-1 transition-colors hover:bg-bg-2 hover:text-text-0"

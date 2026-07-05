@@ -7,6 +7,8 @@ import { useWebRTC } from "@/hooks/useWebRTC";
 import { useRing } from "@/hooks/useRing";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
+import { useHeartbeat } from "@/hooks/useHeartbeat";
+import { AdminPanel } from "@/components/admin/AdminPanel";
 import { Titlebar } from "./Titlebar";
 import { Sidebar } from "./Sidebar";
 import { ChatArea } from "@/components/chat/ChatArea";
@@ -36,6 +38,7 @@ export function Dashboard({
   usePresence(userId);
   useGlobalShortcuts();
   usePushToTalk();
+  useHeartbeat(userId);
 
   const rtc = useWebRTC(userId);
   const voiceChannel = useAppStore((s) => s.voiceChannel);
@@ -43,6 +46,7 @@ export function Dashboard({
   const incomingRing = useAppStore((s) => s.incomingRing);
   const micError = useAppStore((s) => s.micError);
   const theaterMode = useAppStore((s) => s.theaterMode);
+  const adminOpen = useAppStore((s) => s.adminOpen);
   const muted = useAppStore((s) => s.muted);
   const deafened = useAppStore((s) => s.deafened);
   const camOn = useAppStore((s) => s.camOn);
@@ -169,6 +173,8 @@ export function Dashboard({
       {settingsOpen && (
         <SettingsModal signOut={signOut} setMicDevice={rtc.setMicDevice} />
       )}
+
+      {adminOpen && isAdminEmail(userEmail) && <AdminPanel userId={userId} />}
 
       {/* In-app ring banner (popup window covers the minimized case) */}
       {incomingRing && (
