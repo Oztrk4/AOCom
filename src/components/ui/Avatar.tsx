@@ -1,4 +1,5 @@
 "use client";
+import { isSafeAvatarUrl } from "@/lib/avatar";
 
 export function Avatar({
   nickname,
@@ -12,7 +13,8 @@ export function Avatar({
   className?: string;
 }) {
   const style = { width: size, height: size, fontSize: size * 0.42 };
-  if (avatarUrl) {
+  // Only render avatars served from our own Supabase Storage (see M3).
+  if (avatarUrl && isSafeAvatarUrl(avatarUrl)) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img

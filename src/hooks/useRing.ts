@@ -16,7 +16,9 @@ const RING_TIMEOUT_MS = 30_000;
 
 /** Fire one broadcast event at a user's personal ring channel. */
 async function broadcastTo(targetUserId: string, event: string, payload: unknown) {
-  const ch = supabase.channel(`ring:${targetUserId}`);
+  const ch = supabase.channel(`ring:${targetUserId}`, {
+    config: { private: true },
+  });
   await new Promise<void>((resolve) => {
     ch.subscribe((status) => status === "SUBSCRIBED" && resolve());
   });
@@ -82,7 +84,7 @@ export function useRing(
     if (!userId) return;
 
     const ringChannel = supabase
-      .channel(`ring:${userId}`)
+      .channel(`ring:${userId}`, { config: { private: true } })
       .on("broadcast", { event: "ring" }, async ({ payload }) => {
         const ring = payload as RingPayload;
         setIncomingRing(ring);

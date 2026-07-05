@@ -7,7 +7,9 @@ src-tauri/target/
 src-tauri/gen/schemas/
 *.log
 
-# NEVER commit signing keys
+# NEVER commit signing keys or the security doc (contains the key password)
 tauri_key.txt
 *.key
 *.key.txt
+*.pub
+SECURITY-FIXES.md

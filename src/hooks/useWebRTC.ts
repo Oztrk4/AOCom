@@ -280,6 +280,9 @@ export function useWebRTC(userId: string | null) {
 
       const sig = supabase.channel(`voice:${channelId}`, {
         config: {
+          // Private → gated by realtime.messages RLS (active members only),
+          // so peer IPs in ICE candidates can't be harvested by outsiders.
+          private: true,
           presence: { key: userId },
           broadcast: { self: false },
         },

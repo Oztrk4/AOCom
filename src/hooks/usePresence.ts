@@ -15,7 +15,7 @@ export function usePresence(userId: string | null) {
     if (!userId) return;
 
     const channel = supabase.channel("presence:online", {
-      config: { presence: { key: userId } },
+      config: { private: true, presence: { key: userId } },
     });
 
     channel

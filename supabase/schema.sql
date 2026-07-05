@@ -8,7 +8,12 @@
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   nickname text not null,
-  avatar_url text,
+  -- M3: avatar_url may only reference our own Supabase Storage bucket,
+  -- never an arbitrary external URL (blocks IP-harvesting beacons).
+  avatar_url text check (
+    avatar_url is null
+    or avatar_url ~ '^https://[a-z0-9-]+\.supabase\.co/storage/v1/object/public/'
+  ),
   is_active boolean not null default true,
   last_seen_at timestamptz,
   updated_at timestamptz not null default now()
@@ -104,8 +109,11 @@ alter table public.channels enable row level security;
 alter table public.messages enable row level security;
 alter table public.active_status enable row level security;
 
-create policy "profiles readable by members"
-  on public.profiles for select to authenticated using (true);
+-- Own row always readable (so the live-ban kick can see is_active flip);
+-- everyone else's row only while the reader is active.
+create policy "profiles readable by active members"
+  on public.profiles for select to authenticated
+  using (id = (select auth.uid()) or (select public.is_active_user()));
 create policy "update own profile"
   on public.profiles for update to authenticated
   using (auth.uid() = id) with check (auth.uid() = id);
@@ -122,8 +130,9 @@ create policy "admin updates settings"
   using ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com')
   with check ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com');
 
-create policy "channels readable by members"
-  on public.channels for select to authenticated using (true);
+create policy "channels readable by active members"
+  on public.channels for select to authenticated
+  using ((select public.is_active_user()));
 -- HARD GUARD: only the squad admin account may create/rename/delete
 -- channels — enforced by Postgres, not just hidden buttons.
 create policy "admin manages channels"
@@ -131,8 +140,9 @@ create policy "admin manages channels"
   using ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com')
   with check ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com');
 
-create policy "messages readable by members"
-  on public.messages for select to authenticated using (true);
+create policy "messages readable by active members"
+  on public.messages for select to authenticated
+  using ((select public.is_active_user()));
 create policy "send messages as yourself"
   on public.messages for insert to authenticated
   with check (auth.uid() = user_id and public.is_active_user());
@@ -140,8 +150,9 @@ create policy "delete own messages"
   on public.messages for delete to authenticated
   using (auth.uid() = user_id);
 
-create policy "status readable by members"
-  on public.active_status for select to authenticated using (true);
+create policy "status readable by active members"
+  on public.active_status for select to authenticated
+  using ((select public.is_active_user()));
 create policy "insert own status"
   on public.active_status for insert to authenticated
   with check (auth.uid() = user_id);
@@ -156,15 +167,66 @@ alter publication supabase_realtime add table public.active_status;
 alter publication supabase_realtime add table public.profiles;
 alter publication supabase_realtime add table public.channels;
 
+-- ── Realtime Authorization: private voice/ring/presence channels ─────
+-- Only active members may subscribe to (receive) or broadcast on the
+-- P2P signaling channels — blocks peer-IP harvesting and caller spoofing.
+alter table realtime.messages enable row level security;
+
+create policy "active users receive squad realtime"
+  on realtime.messages for select to authenticated
+  using (
+    (select public.is_active_user())
+    and (
+      realtime.topic() like 'voice:%'
+      or realtime.topic() like 'ring:%'
+      or realtime.topic() = 'presence:online'
+    )
+  );
+
+create policy "active users send squad realtime"
+  on realtime.messages for insert to authenticated
+  with check (
+    (select public.is_active_user())
+    and (
+      realtime.topic() like 'voice:%'
+      or realtime.topic() like 'ring:%'
+      or realtime.topic() = 'presence:online'
+    )
+  );
+
 -- ── Storage: public bucket for chat attachments (25 MB cap) ─────────
 
 insert into storage.buckets (id, name, public, file_size_limit)
 values ('attachments', 'attachments', true, 26214400)
 on conflict (id) do nothing;
 
-create policy "members upload attachments"
+-- M4: writes constrained to the uploader's own folder + safe file types.
+-- Chat attachments: <uid>/... ; avatars: avatars/<uid>/...
+create policy "users upload to own folder"
   on storage.objects for insert to authenticated
-  with check (bucket_id = 'attachments');
+  with check (
+    bucket_id = 'attachments'
+    and (
+      (storage.foldername(name))[1] = (auth.uid())::text
+      or (
+        (storage.foldername(name))[1] = 'avatars'
+        and (storage.foldername(name))[2] = (auth.uid())::text
+      )
+    )
+    and lower(storage.extension(name)) = any (array[
+      'png','jpg','jpeg','gif','webp','avif','bmp',
+      'pdf','txt','zip','rar','7z',
+      'mp3','ogg','wav','m4a','mp4','webm','mov','mkv',
+      'doc','docx','xls','xlsx','ppt','pptx','csv','json','log'
+    ])
+  );
+create policy "users manage own uploads"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'attachments' and owner = auth.uid());
+create policy "users delete own uploads"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'attachments' and owner = auth.uid());
+-- Public read preserved so existing image/attachment links keep working.
 create policy "attachments are public"
   on storage.objects for select to public
   using (bucket_id = 'attachments');

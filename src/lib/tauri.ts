@@ -182,19 +182,40 @@ export async function nativeConfirm(
   return ask(body, { title, kind: "warning" });
 }
 
-/** CORS-free fetch through the Rust HTTP client (for OpenGraph previews). */
+/**
+ * Fetch page HTML for OpenGraph previews. In the app this goes through the
+ * SSRF-hardened `fetch_link_preview` Rust command, which resolves the host
+ * and refuses any private/loopback/link-local/metadata/CGNAT address
+ * (blocking DNS-rebinding and internal-network probing). The browser
+ * fallback (dev only) applies a best-effort IP-literal block.
+ */
+function isBlockedHostLiteral(host: string): boolean {
+  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local")) return true;
+  // IPv4 literal in a private/loopback/link-local/CGNAT/metadata range.
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    if (a === 10 || a === 127 || a === 0) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+  }
+  // IPv6 loopback / ULA / link-local literals.
+  if (h === "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80")) return true;
+  return false;
+}
+
 export async function nativeFetchText(url: string): Promise<string | null> {
   try {
     if (isTauri()) {
-      const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
-      const res = await tauriFetch(url, {
-        method: "GET",
-        headers: { "User-Agent": "Mozilla/5.0 AOCom" },
-        connectTimeout: 5000,
-      });
-      if (!res.ok) return null;
-      return await res.text();
+      const { invoke } = await import("@tauri-apps/api/core");
+      return await invoke<string>("fetch_link_preview", { url });
     }
+    // Dev-only browser path.
+    const host = new URL(url).hostname;
+    if (isBlockedHostLiteral(host)) return null;
     const res = await fetch(url);
     return res.ok ? await res.text() : null;
   } catch {

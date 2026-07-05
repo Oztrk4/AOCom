@@ -10,10 +10,15 @@ export function useAuth() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
+      // Bind the Realtime socket to the JWT so private (authorized)
+      // voice/ring/presence channels pass their RLS checks.
+      void supabase.realtime.setAuth(data.session?.access_token ?? null);
       setSession(data.session);
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      // Keep the Realtime token fresh across refresh / sign-in / sign-out.
+      void supabase.realtime.setAuth(s?.access_token ?? null);
       setSession(s);
     });
     return () => sub.subscription.unsubscribe();
