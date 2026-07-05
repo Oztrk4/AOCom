@@ -1,0 +1,12 @@
+{
+  "_comment": "Template for the update manifest. Copy to the ROOT of the Oztrk4/AOCom GitHub repo as `update.json` (main branch) each time you release. `signature` is the FULL CONTENTS of the .sig file that `npm run tauri build` generates next to the installer (requires TAURI_SIGNING_PRIVATE_KEY to be set). `url` points at the installer you uploaded as a GitHub Release asset. `version` must be higher than the installed app's version for the prompt to appear.",
+  "version": "0.2.0",
+  "notes": "• What changed in this release\n• Second bullet",
+  "pub_date": "2026-07-05T12:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "PASTE_CONTENTS_OF_AOCom_0.2.0_x64-setup.exe.sig_HERE",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.0/AOCom_0.2.0_x64-setup.exe"
+    }
+  }
+}

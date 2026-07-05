@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/* ── AOCom Matte Theme Engine ───────────────────────────────────────────
+   Four premium matte palettes switched live via <html data-theme="...">.
+   Flat, low-glare surfaces; at most one or two restrained semi-neon
+   highlights per theme. Components consume only tokens, never raw hex. */
+
+/* Nordic Matte — deep charcoal, muted slate-blue accents */
+:root,
+[data-theme="nordic"] {
+  --bg-0: #1e222a;
+  --bg-1: #1a1d24;
+  --bg-2: #262b34;
+  --bg-3: #303743;
+  --border: #343b47;
+  --text-0: #e5e9f0;
+  --text-1: #9099a8;
+  --accent: #81a1c1;
+  --accent-2: #88c0d0;
+  --accent-soft: rgba(129, 161, 193, 0.14);
+  --danger: #bf616a;
+  --success: #a3be8c;
+}
+
+/* Graphite — matte industrial grey/black, ash-white, low-contrast edges */
+[data-theme="graphite"] {
+  --bg-0: #181818;
+  --bg-1: #141414;
+  --bg-2: #1f1f1f;
+  --bg-3: #2a2a2a;
+  --border: #262626;
+  --text-0: #e8e8e6;
+  --text-1: #8a8a88;
+  --accent: #d4d4d0;
+  --accent-2: #a8a8a4;
+  --accent-soft: rgba(212, 212, 208, 0.09);
+  --danger: #c96a6a;
+  --success: #8fae8b;
+}
+
+/* Muted Cyber — velvet dark, desaturated flat purple (the one semi-neon) */
+[data-theme="mutedcyber"] {
+  --bg-0: #0d0e15;
+  --bg-1: #0a0b11;
+  --bg-2: #14161f;
+  --bg-3: #1d2030;
+  --border: #23263a;
+  --text-0: #e6e4f0;
+  --text-1: #8e8ba6;
+  --accent: #9d8cd6;
+  --accent-2: #6d7fb8;
+  --accent-soft: rgba(157, 140, 214, 0.13);
+  --danger: #c46a85;
+  --success: #7fb89a;
+}
+
+/* Tactical Emerald — dark olive-grey, flat non-glowing military green */
+[data-theme="tactical"] {
+  --bg-0: #1c1e1d;
+  --bg-1: #181a19;
+  --bg-2: #232625;
+  --bg-3: #2c302e;
+  --border: #313632;
+  --text-0: #e3e6e2;
+  --text-1: #8f978f;
+  --accent: #7a9464;
+  --accent-2: #a3a86b;
+  --accent-soft: rgba(122, 148, 100, 0.14);
+  --danger: #b06a5a;
+  --success: #9cb380;
+}
+
+@theme inline {
+  --color-bg-0: var(--bg-0);
+  --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-edge: var(--border);
+  --color-text-0: var(--text-0);
+  --color-text-1: var(--text-1);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+}
+
+html,
+body {
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Transparent page background for the frameless incoming-call popup */
+body[data-transparent="true"] {
+  background: transparent;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* Slim scrollbars that follow the theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--bg-3);
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Active-speaker indicator — matte: a firm ring with a whisper of bloom */
+@keyframes speak-glow {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent); }
+  50% { box-shadow: 0 0 0 2px var(--accent), 0 0 10px var(--accent-soft); }
+}
+.speaking {
+  animation: speak-glow 1.4s ease-in-out infinite;
+  border-color: var(--accent) !important;
+}
+
+/* Incoming-call ripple */
+@keyframes ripple {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+.ripple::before,
+.ripple::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid var(--accent);
+  animation: ripple 1.6s ease-out infinite;
+}
+.ripple::after {
+  animation-delay: 0.8s;
+}

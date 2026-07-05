@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+.env.local
+app-icon.png
+src-tauri/target/
+src-tauri/gen/schemas/
+*.log
+
+# NEVER commit signing keys
+tauri_key.txt
+*.key
+*.key.txt

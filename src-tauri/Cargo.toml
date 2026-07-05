@@ -1,0 +1,39 @@
+[package]
+name = "aocom"
+version = "0.1.0"
+description = "AOCom — lightweight P2P voice, video and text for the squad"
+authors = ["Samet"]
+edition = "2021"
+
+[lib]
+name = "aocom_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-notification = "2"
+tauri-plugin-store = "2"
+tauri-plugin-http = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+
+[target.'cfg(windows)'.dependencies]
+# Must track the same minor version wry/tauri pin so the WebView2 COM
+# types are one crate and the PermissionRequested hook type-checks.
+webview2-com = "0.38"
+windows = { version = "0.61", features = ["Win32_System_Threading"] }
+
+[profile.release]
+# Keep the shipped .exe tiny and RAM-friendly for gaming sessions.
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
