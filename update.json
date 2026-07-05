@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "notes": "İlk sürüm — AOCom v0.1.0\n• P2P sesli/görüntülü sohbet ve metin kanalları\n• Push-to-Talk, tiyatro modu, mat tema motoru\n• Otomatik güncelleme sistemi aktif",
+  "pub_date": "2026-07-06T00:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSUjJNNTBORVBOQkJ4Qy9yWUpCajBKRGJVdDVmeXc1d1MwNjIrRHhNV3FhQVF0d1I4MDJCM0pHS3VtZkNkV1k2MlNiL08xY1FoTisrNys3N3Z1T2JZV1VxSHdzdFFLbHcwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMjg0MjExCWZpbGU6QU9Db21fMC4xLjBfeDY0LXNldHVwLmV4ZQptcjFUeWtmZmlKc3FBMXBOREZwY3YzYURkZFRqTGRzeWRWclFqc0pPMDZUcW9tdDRYNGsvNHJxT1ZFM1FOMFlvYmp0ZzNjMFhQcU5wM3EwT2FyQUxCUT09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.1.0/AOCom_0.1.0_x64-setup.exe"
+    }
+  }
+}
