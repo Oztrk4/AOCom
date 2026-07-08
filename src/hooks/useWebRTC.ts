@@ -38,10 +38,14 @@ interface Peer {
   polite: boolean;
   makingOffer: boolean;
   ignoreOffer: boolean;
-  /** Composite stream we assemble from ontrack events. */
+  /** Composite stream (mic audio + camera video) assembled from ontrack. */
   stream: MediaStream | null;
-  /** Pre-negotiated video sender — camera toggles via replaceTrack only. */
-  videoSender: RTCRtpSender | null;
+  /** Screen-share video track from this peer, kept as its own stream. */
+  screenStream: MediaStream | null;
+  /** Pre-negotiated camera transceiver — camera toggles via replaceTrack. */
+  camTransceiver: RTCRtpTransceiver | null;
+  /** Pre-negotiated screen transceiver — screen share via replaceTrack. */
+  screenTransceiver: RTCRtpTransceiver | null;
 }
 
 export function useWebRTC(userId: string | null) {
@@ -53,12 +57,15 @@ export function useWebRTC(userId: string | null) {
   /** Web Audio voice-optimization graph feeding the outgoing track. */
   const micGraphRef = useRef<ProcessedMic | null>(null);
   const camTrackRef = useRef<MediaStreamTrack | null>(null);
+  const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analysersRef = useRef<Map<string, AnalyserNode>>(new Map());
   const speakTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [localScreen, setLocalScreen] = useState<MediaStream | null>(null);
+  const [remoteScreens, setRemoteScreens] = useState<Record<string, MediaStream>>({});
   const [speakingIds, setSpeakingIds] = useState<Set<string>>(new Set());
   const [connected, setConnected] = useState(false);
 
@@ -75,6 +82,15 @@ export function useWebRTC(userId: string | null) {
   const bumpLocal = useCallback(() => {
     const local = localStreamRef.current;
     setLocalStream(local ? new MediaStream(local.getTracks()) : null);
+  }, []);
+
+  const bumpScreen = useCallback((peerId: string, stream: MediaStream | null) => {
+    setRemoteScreens((prev) => {
+      const next = { ...prev };
+      if (stream) next[peerId] = stream;
+      else delete next[peerId];
+      return next;
+    });
   }, []);
 
   const sendSignal = useCallback(
@@ -114,8 +130,9 @@ export function useWebRTC(userId: string | null) {
       analysersRef.current.get(peerId)?.disconnect();
       analysersRef.current.delete(peerId);
       bumpRemote(peerId, null);
+      bumpScreen(peerId, null);
     },
-    [bumpRemote]
+    [bumpRemote, bumpScreen]
   );
 
   const createPeer = useCallback(
@@ -129,7 +146,9 @@ export function useWebRTC(userId: string | null) {
         makingOffer: false,
         ignoreOffer: false,
         stream: null,
-        videoSender: null,
+        screenStream: null,
+        camTransceiver: null,
+        screenTransceiver: null,
       };
       peersRef.current.set(peerId, peer);
 
@@ -148,14 +167,19 @@ export function useWebRTC(userId: string | null) {
           }
         }
 
-      // Reserve the video m-line up front. From here on, camera on/off is
-      // replaceTrack() — never a renegotiation.
-      const videoTransceiver = pc.addTransceiver("video", {
-        direction: "sendrecv",
-      });
-      peer.videoSender = videoTransceiver.sender;
+      // Reserve TWO video m-lines up front, in a fixed order: [camera,
+      // screen]. From here on camera and screen toggles are pure
+      // replaceTrack() — never a renegotiation. The creation order is
+      // identical on both peers, so the transceiver refs line up and the
+      // receiver can tell camera video from screen video.
+      const camTransceiver = pc.addTransceiver("video", { direction: "sendrecv" });
+      const screenTransceiver = pc.addTransceiver("video", { direction: "sendrecv" });
+      peer.camTransceiver = camTransceiver;
+      peer.screenTransceiver = screenTransceiver;
       if (camTrackRef.current)
-        void videoTransceiver.sender.replaceTrack(camTrackRef.current);
+        void camTransceiver.sender.replaceTrack(camTrackRef.current);
+      if (screenTrackRef.current)
+        void screenTransceiver.sender.replaceTrack(screenTrackRef.current);
 
       pc.onnegotiationneeded = async () => {
         try {
@@ -176,8 +200,22 @@ export function useWebRTC(userId: string | null) {
       };
 
       pc.ontrack = (e) => {
-        // Assemble a composite stream per peer (transceiver tracks arrive
-        // without a stream association).
+        // Screen-share video rides its own transceiver → its own stream,
+        // shown as a separate tile. Gated on mute so it appears only while
+        // the peer is actually sharing.
+        if (e.track.kind === "video" && e.transceiver === peer.screenTransceiver) {
+          const scr = new MediaStream([e.track]);
+          peer.screenStream = scr;
+          const sync = () =>
+            bumpScreen(peerId, e.track.muted || e.track.readyState === "ended" ? null : scr);
+          e.track.onmute = sync;
+          e.track.onunmute = sync;
+          e.track.onended = () => bumpScreen(peerId, null);
+          sync();
+          return;
+        }
+
+        // Everything else (mic audio + camera video) → the composite tile.
         if (!peer.stream) peer.stream = new MediaStream();
         if (!peer.stream.getTracks().includes(e.track))
           peer.stream.addTrack(e.track);
@@ -198,7 +236,7 @@ export function useWebRTC(userId: string | null) {
 
       return peer;
     },
-    [userId, sendSignal, bumpRemote, attachAnalyser]
+    [userId, sendSignal, bumpRemote, bumpScreen, attachAnalyser]
   );
 
   const handleSignal = useCallback(
@@ -343,6 +381,8 @@ export function useWebRTC(userId: string | null) {
 
     camTrackRef.current?.stop();
     camTrackRef.current = null;
+    screenTrackRef.current?.stop();
+    screenTrackRef.current = null;
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     micGraphRef.current?.disconnect();
@@ -351,6 +391,8 @@ export function useWebRTC(userId: string | null) {
     rawMicRef.current = null;
     setLocalStream(null);
     setRemoteStreams({});
+    setLocalScreen(null);
+    setRemoteScreens({});
     setSpeakingIds(new Set());
     setConnected(false);
 
@@ -401,7 +443,7 @@ export function useWebRTC(userId: string | null) {
         bumpLocal();
         await Promise.all(
           [...peersRef.current.values()].map(
-            (p) => p.videoSender?.replaceTrack(track) ?? Promise.resolve()
+            (p) => p.camTransceiver?.sender.replaceTrack(track) ?? Promise.resolve()
           )
         );
       } else if (!on && camTrackRef.current) {
@@ -412,13 +454,61 @@ export function useWebRTC(userId: string | null) {
         bumpLocal();
         await Promise.all(
           [...peersRef.current.values()].map(
-            (p) => p.videoSender?.replaceTrack(null) ?? Promise.resolve()
+            (p) => p.camTransceiver?.sender.replaceTrack(null) ?? Promise.resolve()
           )
         );
       }
     },
     [bumpLocal]
   );
+
+  /**
+   * Screen share via the pre-negotiated screen transceiver → pure
+   * replaceTrack fan-out, no renegotiation. Camera and mic are untouched,
+   * so you can screen-share with your webcam on and voice flowing.
+   */
+  const stopScreenShare = useCallback(async () => {
+    const track = screenTrackRef.current;
+    if (!track) return;
+    screenTrackRef.current = null;
+    await Promise.all(
+      [...peersRef.current.values()].map(
+        (p) => p.screenTransceiver?.sender.replaceTrack(null) ?? Promise.resolve()
+      )
+    );
+    track.stop();
+    setLocalScreen(null);
+  }, []);
+
+  const startScreenShare = useCallback(async () => {
+    if (screenTrackRef.current) return;
+    let display: MediaStream;
+    try {
+      display = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+    } catch {
+      return; // user cancelled the OS picker — no-op
+    }
+    const track = display.getVideoTracks()[0];
+    if (!track) return;
+    track.contentHint = "detail";
+    // Screen/system audio is intentionally NOT piped to peers: doing so
+    // would route it through the voice DSP + mute/PTT gate. Release it so
+    // no capture lingers. (Audio-share can be added later as its own track.)
+    display.getAudioTracks().forEach((t) => t.stop());
+
+    screenTrackRef.current = track;
+    // OS "Stop sharing" bar → tear down cleanly.
+    track.onended = () => void stopScreenShare();
+    setLocalScreen(new MediaStream([track]));
+    await Promise.all(
+      [...peersRef.current.values()].map(
+        (p) => p.screenTransceiver?.sender.replaceTrack(track) ?? Promise.resolve()
+      )
+    );
+  }, [stopScreenShare]);
 
   /**
    * Live quality switch (360p/480p/720p) via applyConstraints on the
@@ -506,8 +596,12 @@ export function useWebRTC(userId: string | null) {
     applyQuality,
     setMicDevice,
     setMicEnabled,
+    startScreenShare,
+    stopScreenShare,
     localStream,
     remoteStreams,
+    localScreen,
+    remoteScreens,
     speakingIds,
     connected,
   };

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { useBootstrap } from "@/hooks/useBootstrap";
 import { usePresence } from "@/hooks/usePresence";
@@ -9,6 +9,7 @@ import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
 import { AdminPanel } from "@/components/admin/AdminPanel";
+import { DragDropUpload } from "@/components/chat/DragDropUpload";
 import { Titlebar } from "./Titlebar";
 import { Sidebar } from "./Sidebar";
 import { ChatArea } from "@/components/chat/ChatArea";
@@ -53,10 +54,16 @@ export function Dashboard({
   const quality = useAppStore((s) => s.quality);
   const inputMode = useAppStore((s) => s.inputMode);
   const pttActive = useAppStore((s) => s.pttActive);
+  const [voiceBanOpen, setVoiceBanOpen] = useState(false);
 
   const joinVoice = useCallback(
     async (channel: Channel) => {
       const state = useAppStore.getState();
+      // Ses banı: block joining voice entirely and explain why.
+      if (state.profile?.has_voice_ban) {
+        setVoiceBanOpen(true);
+        return;
+      }
       if (state.voiceChannel?.id === channel.id) return;
       if (state.voiceChannel) await rtc.leave();
       state.setCamOn(false);
@@ -108,6 +115,7 @@ export function Dashboard({
   return (
     <div className="flex h-screen flex-col bg-bg-0">
       <Titlebar />
+      <DragDropUpload userId={userId} />
 
       {/* Mic permission recovery banner */}
       {micError && (
@@ -149,7 +157,9 @@ export function Dashboard({
           isAdmin={isAdminEmail(userEmail)}
         />
         {/* Theater mode: chat collapses, the room grid takes the width */}
-        {!(theaterMode && voiceChannel) && <ChatArea userId={userId} />}
+        {!(theaterMode && voiceChannel) && (
+          <ChatArea userId={userId} isAdmin={isAdminEmail(userEmail)} />
+        )}
         <aside
           className={`flex min-h-0 flex-col border-l border-edge bg-bg-1 ${
             theaterMode && voiceChannel ? "min-w-0 flex-1" : "w-80 shrink-0"
@@ -161,20 +171,56 @@ export function Dashboard({
               channel={voiceChannel}
               localStream={rtc.localStream}
               remoteStreams={rtc.remoteStreams}
+              localScreen={rtc.localScreen}
+              remoteScreens={rtc.remoteScreens}
               speakingIds={rtc.speakingIds}
               leaveVoice={leaveVoice}
+              startScreenShare={rtc.startScreenShare}
+              stopScreenShare={rtc.stopScreenShare}
             />
           ) : (
-            <FriendsList userId={userId} sendRing={sendRing} />
+            <FriendsList
+              userId={userId}
+              sendRing={sendRing}
+              isAdmin={isAdminEmail(userEmail)}
+            />
           )}
         </aside>
       </div>
 
       {settingsOpen && (
-        <SettingsModal signOut={signOut} setMicDevice={rtc.setMicDevice} />
+        <SettingsModal
+          signOut={signOut}
+          setMicDevice={rtc.setMicDevice}
+          isAdmin={isAdminEmail(userEmail)}
+        />
       )}
 
       {adminOpen && isAdminEmail(userEmail) && <AdminPanel userId={userId} />}
+
+      {/* Voice-ban notice when a banned user tries to join a voice room */}
+      {voiceBanOpen && (
+        <div
+          className="absolute inset-0 z-[60] flex items-center justify-center bg-bg-0/80 backdrop-blur-sm"
+          onClick={() => setVoiceBanOpen(false)}
+        >
+          <div
+            className="w-[380px] max-w-[90vw] rounded-2xl border border-edge bg-bg-1 p-6 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 text-4xl">🔇</div>
+            <p className="mb-4 text-sm font-semibold text-text-0">
+              Ses banı nedeniyle ses odalarına katılamazsınız.
+            </p>
+            <button
+              onClick={() => setVoiceBanOpen(false)}
+              className="rounded-lg bg-accent px-4 py-2 text-xs font-bold text-bg-0"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* In-app ring banner (popup window covers the minimized case) */}
       {incomingRing && (

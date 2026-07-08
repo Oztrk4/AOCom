@@ -1,11 +1,11 @@
 {
-  "version": "0.2.0",
-  "notes": "AOCom v0.2.0\n• Admin paneli: üye aktif/pasif yönetimi\n• Kayıt kontrolü: yeni üyelik açma/kapama\n• \"En son görülme\" bilgisi arkadaş listesinde\n• Yasaklı kullanıcı girişleri engellendi",
-  "pub_date": "2026-07-06T00:30:00Z",
+  "version": "0.1.0",
+  "notes": "AOCom v0.1.0 — İlk resmi sürüm\n• Sesli/görüntülü sohbet ve ekran paylaşımı\n• Metin kanalları, sürükle-bırak dosya yükleme\n• Yönetici paneli, çoklu ban sistemi (sohbet/ses/uygulama)\n• Mat tema motoru, push-to-talk, otomatik güncelleme",
+  "pub_date": "2026-07-08T21:24:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSUjJNNTBORVBOQlB5R0ZjZzllSGtnTFlNczEwOTBUZk51RnVZaUExdndVZFpyWGF0OFp3b24zWTNWSjVBNU41eXBROHlDejUwZ2g2T1hvZldES25EL1kwbm9ZMEVxNncwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzMjg2OTQ2CWZpbGU6QU9Db21fMC4yLjBfeDY0LXNldHVwLmV4ZQpSM21DaWZ6ZzZQSmUrS0lDdVRVVXFQaHdoYUdrTldRQmpUMURqbUpYSkJrWVc5R0psbzRhWW1qbkR4TkY2WndOMFJOQ09ENmRvRUdlUUFHSllTQUdBdz09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.0/AOCom_0.2.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaStnSjBqaHVMeW95dm5uYXRPOExteWRmczdtOWtjZFVjbXVlaFNLZ3hZb2FxUEE4d1hPRkxHWXZxcS9aYm5IUWZvcUtyZERMTkdORDBNQ28rMzdpOGdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNTQyMjk2CWZpbGU6QU9Db21fMC4xLjBfeDY0LXNldHVwLmV4ZQpqaW1DWkFhNkdmYStKVjJyUVIyODRFdUhKWTRjR2N4cUNNM3VNREZlRlhRNk00ZHY4d3hndFVQVkpBZkp5ZW1meUw0QWpXZjNTTGNsM1BMQlliaVhEZz09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.1.0/AOCom_0.1.0_x64-setup.exe"
     }
   }
 }

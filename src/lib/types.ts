@@ -41,6 +41,8 @@ export interface Profile {
   nickname: string;
   avatar_url: string | null;
   is_active?: boolean;
+  has_chat_ban?: boolean;
+  has_voice_ban?: boolean;
   last_seen_at?: string | null;
   updated_at?: string;
 }

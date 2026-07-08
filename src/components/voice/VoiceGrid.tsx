@@ -13,6 +13,8 @@ import {
   MicIcon,
   MicOffIcon,
   PhoneOffIcon,
+  ScreenShareIcon,
+  ScreenShareOffIcon,
 } from "@/components/ui/icons";
 import type { Channel, VideoQuality } from "@/lib/types";
 
@@ -23,6 +25,7 @@ function Tile({
   speaking,
   deafened,
   fill = false,
+  screen = false,
 }: {
   id: string;
   stream: MediaStream | null;
@@ -31,6 +34,8 @@ function Tile({
   deafened: boolean;
   /** Theater mode: stretch to the grid cell instead of a fixed ratio. */
   fill?: boolean;
+  /** Screen-share tile: fit (don't crop) + "· Ekran" label, no glow. */
+  screen?: boolean;
 }) {
   const profile = useAppStore((s) => s.profiles[id]);
   const speakerDeviceId = useAppStore((s) => s.speakerDeviceId);
@@ -54,9 +59,9 @@ function Tile({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border border-edge bg-bg-2 ${
+      className={`relative overflow-hidden rounded-xl border bg-bg-2 ${
         fill ? "h-full min-h-[180px]" : "aspect-video"
-      } ${speaking ? "speaking" : ""}`}
+      } ${screen ? "border-accent/60" : "border-edge"} ${speaking ? "speaking" : ""}`}
     >
       {/* The <video> element also carries the audio of audio-only peers. */}
       <video
@@ -64,7 +69,11 @@ function Tile({
         autoPlay
         playsInline
         muted={isSelf || deafened}
-        className={hasVideo ? "h-full w-full object-cover" : "hidden"}
+        className={
+          hasVideo
+            ? `h-full w-full ${screen ? "bg-black object-contain" : "object-cover"}`
+            : "hidden"
+        }
       />
       {!hasVideo && (
         <div className="flex h-full items-center justify-center">
@@ -77,8 +86,10 @@ function Tile({
         </div>
       )}
       <span className="absolute bottom-1.5 left-2 rounded bg-bg-0/70 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur">
+        {screen && "🖥️ "}
         {profile?.nickname ?? "…"}
         {isSelf && " (you)"}
+        {screen && " · Ekran"}
       </span>
     </div>
   );
@@ -89,15 +100,23 @@ export function VoiceGrid({
   channel,
   localStream,
   remoteStreams,
+  localScreen,
+  remoteScreens,
   speakingIds,
   leaveVoice,
+  startScreenShare,
+  stopScreenShare,
 }: {
   userId: string;
   channel: Channel;
   localStream: MediaStream | null;
   remoteStreams: Record<string, MediaStream>;
+  localScreen: MediaStream | null;
+  remoteScreens: Record<string, MediaStream>;
   speakingIds: Set<string>;
   leaveVoice: () => Promise<void>;
+  startScreenShare: () => Promise<void>;
+  stopScreenShare: () => Promise<void>;
 }) {
   const {
     muted,
@@ -189,6 +208,31 @@ export function VoiceGrid({
             fill={theaterMode}
           />
         ))}
+        {/* Screen-share tiles (local + remote), shown while sharing */}
+        {localScreen && (
+          <Tile
+            key="screen-self"
+            id={userId}
+            stream={localScreen}
+            isSelf
+            speaking={false}
+            deafened={deafened}
+            fill={theaterMode}
+            screen
+          />
+        )}
+        {Object.entries(remoteScreens).map(([peerId, stream]) => (
+          <Tile
+            key={`screen-${peerId}`}
+            id={peerId}
+            stream={stream}
+            isSelf={false}
+            speaking={false}
+            deafened={deafened}
+            fill={theaterMode}
+            screen
+          />
+        ))}
       </div>
 
       {/* Controls */}
@@ -222,6 +266,18 @@ export function VoiceGrid({
             aria-label="Toggle camera"
           >
             {camOn ? <CamIcon /> : <CamOffIcon />}
+          </button>
+          <button
+            onClick={() => (localScreen ? stopScreenShare() : startScreenShare())}
+            className={`rounded-full p-2.5 transition-colors ${
+              localScreen
+                ? "bg-accent text-bg-0"
+                : "bg-bg-2 text-text-0 hover:bg-bg-3"
+            }`}
+            aria-label="Ekranı Paylaş"
+            title={localScreen ? "Paylaşımı durdur" : "Ekranı Paylaş"}
+          >
+            {localScreen ? <ScreenShareIcon /> : <ScreenShareOffIcon />}
           </button>
           <button
             onClick={() => leaveVoice()}

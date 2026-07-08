@@ -15,6 +15,8 @@ create table public.profiles (
     or avatar_url ~ '^https://[a-z0-9-]+\.supabase\.co/storage/v1/object/public/'
   ),
   is_active boolean not null default true,
+  has_chat_ban boolean not null default false,
+  has_voice_ban boolean not null default false,
   last_seen_at timestamptz,
   updated_at timestamptz not null default now()
 );
@@ -83,7 +85,7 @@ begin
 end;
 $$;
 
--- Ban check helper (security definer so RLS can consult profiles).
+-- Ban check helpers (security definer so RLS can consult profiles).
 create or replace function public.is_active_user()
 returns boolean
 language sql
@@ -93,6 +95,24 @@ set search_path = public
 as $$
   select coalesce(
     (select is_active from public.profiles where id = auth.uid()),
+    false
+  );
+$$;
+
+-- App-active AND not chat-banned → may send messages.
+create or replace function public.can_send_messages()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select is_active and not has_chat_ban from public.profiles where id = auth.uid()),
+    false
+  );
+$$;
+
+-- App-active AND not voice-banned → may join voice channels.
+create or replace function public.can_use_voice()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select is_active and not has_voice_ban from public.profiles where id = auth.uid()),
     false
   );
 $$;
@@ -145,10 +165,14 @@ create policy "messages readable by active members"
   using ((select public.is_active_user()));
 create policy "send messages as yourself"
   on public.messages for insert to authenticated
-  with check (auth.uid() = user_id and public.is_active_user());
+  with check (auth.uid() = user_id and public.can_send_messages());
 create policy "delete own messages"
   on public.messages for delete to authenticated
   using (auth.uid() = user_id);
+-- Admin may delete ANY message.
+create policy "admin deletes any message"
+  on public.messages for delete to authenticated
+  using ((auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com');
 
 create policy "status readable by active members"
   on public.active_status for select to authenticated
@@ -172,26 +196,28 @@ alter publication supabase_realtime add table public.channels;
 -- P2P signaling channels — blocks peer-IP harvesting and caller spoofing.
 alter table realtime.messages enable row level security;
 
+-- voice:* requires can_use_voice() (blocks voice-banned); ring/presence
+-- require an active session.
 create policy "active users receive squad realtime"
   on realtime.messages for select to authenticated
   using (
-    (select public.is_active_user())
-    and (
-      realtime.topic() like 'voice:%'
-      or realtime.topic() like 'ring:%'
-      or realtime.topic() = 'presence:online'
-    )
+    case
+      when realtime.topic() like 'voice:%' then (select public.can_use_voice())
+      when realtime.topic() like 'ring:%'
+        or realtime.topic() = 'presence:online' then (select public.is_active_user())
+      else false
+    end
   );
 
 create policy "active users send squad realtime"
   on realtime.messages for insert to authenticated
   with check (
-    (select public.is_active_user())
-    and (
-      realtime.topic() like 'voice:%'
-      or realtime.topic() like 'ring:%'
-      or realtime.topic() = 'presence:online'
-    )
+    case
+      when realtime.topic() like 'voice:%' then (select public.can_use_voice())
+      when realtime.topic() like 'ring:%'
+        or realtime.topic() = 'presence:online' then (select public.is_active_user())
+      else false
+    end
   );
 
 -- ── Storage: public bucket for chat attachments (25 MB cap) ─────────

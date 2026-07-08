@@ -19,6 +19,7 @@ import {
   TrashIcon,
   XIcon,
 } from "@/components/ui/icons";
+import { APP_VERSION } from "@/lib/version";
 import type { Channel, ChannelType } from "@/lib/types";
 
 export function Sidebar({
@@ -360,6 +361,13 @@ export function Sidebar({
         >
           <GearIcon width={15} height={15} />
         </button>
+      </div>
+
+      {/* App version — low-contrast, unobtrusive */}
+      <div className="border-t border-edge bg-bg-0/50 px-3 py-1 text-right">
+        <span className="text-[9px] tracking-wide text-text-1/50">
+          v{APP_VERSION}
+        </span>
       </div>
     </nav>
   );

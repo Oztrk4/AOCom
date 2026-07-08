@@ -29,9 +29,16 @@ function fmtTime(iso: string) {
   });
 }
 
-export function ChatArea({ userId }: { userId: string }) {
+export function ChatArea({
+  userId,
+  isAdmin = false,
+}: {
+  userId: string;
+  isAdmin?: boolean;
+}) {
   const activeTextChannel = useAppStore((s) => s.activeTextChannel);
   const profiles = useAppStore((s) => s.profiles);
+  const chatBanned = useAppStore((s) => s.profile?.has_chat_ban ?? false);
   const { messages, loading, sendMessage, deleteMessage } = useMessages(
     activeTextChannel?.id ?? null,
     userId
@@ -61,7 +68,7 @@ export function ChatArea({ userId }: { userId: string }) {
   }, [messages.length, activeTextChannel?.id]);
 
   const submit = async () => {
-    if (sending || (!draft.trim() && !file)) return;
+    if (chatBanned || sending || (!draft.trim() && !file)) return;
     setSending(true);
     await sendMessage(draft, file ?? undefined);
     setDraft("");
@@ -157,12 +164,13 @@ export function ChatArea({ userId }: { userId: string }) {
                   ))}
                 {url && <LinkPreview url={url} />}
               </div>
-              {m.user_id === userId && (
+              {/* Author can delete own; admin can delete ANY message. */}
+              {(m.user_id === userId || isAdmin) && (
                 <button
                   onClick={() => deleteMessage(m.id)}
                   className="mt-0.5 h-fit shrink-0 rounded p-1 text-text-1 opacity-0 transition-opacity hover:bg-danger/15 hover:text-danger group-hover:opacity-100"
-                  aria-label="Delete message"
-                  title="Delete message"
+                  aria-label="Sil"
+                  title={m.user_id === userId ? "Sil" : "Sil (admin)"}
                 >
                   <TrashIcon width={13} height={13} />
                 </button>
@@ -188,7 +196,13 @@ export function ChatArea({ userId }: { userId: string }) {
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2 rounded-xl border border-edge bg-bg-2 px-3 py-1.5 focus-within:border-accent">
+        <div
+          className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 ${
+            chatBanned
+              ? "border-danger/40 bg-bg-2/60"
+              : "border-edge bg-bg-2 focus-within:border-accent"
+          }`}
+        >
           <input
             ref={fileInputRef}
             type="file"
@@ -197,24 +211,32 @@ export function ChatArea({ userId }: { userId: string }) {
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="rounded p-1.5 text-text-1 transition-colors hover:text-accent"
+            disabled={chatBanned}
+            className="rounded p-1.5 text-text-1 transition-colors hover:text-accent disabled:opacity-40 disabled:hover:text-text-1"
             aria-label="Attach file"
           >
             <PaperclipIcon />
           </button>
           <input
             ref={textInputRef}
-            value={draft}
+            value={chatBanned ? "" : draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
-            placeholder={`Message #${activeTextChannel?.name ?? ""}`}
-            className="flex-1 bg-transparent py-1.5 text-sm outline-none placeholder-text-1 select-text"
+            disabled={chatBanned}
+            placeholder={
+              chatBanned
+                ? "Sohbet banı sebebiyle şu an mesaj gönderemezsiniz."
+                : `Message #${activeTextChannel?.name ?? ""}`
+            }
+            className={`flex-1 bg-transparent py-1.5 text-sm outline-none placeholder-text-1 select-text ${
+              chatBanned ? "cursor-not-allowed placeholder-danger/70" : ""
+            }`}
             maxLength={2000}
           />
-          <EmojiPicker onPick={insertEmoji} />
+          {!chatBanned && <EmojiPicker onPick={insertEmoji} />}
           <button
             onClick={submit}
-            disabled={sending || (!draft.trim() && !file)}
+            disabled={chatBanned || sending || (!draft.trim() && !file)}
             className="rounded p-1.5 text-accent transition-opacity disabled:opacity-30"
             aria-label="Send"
           >

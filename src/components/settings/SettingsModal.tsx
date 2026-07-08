@@ -9,6 +9,7 @@ import { processAvatar } from "@/lib/image";
 import { nativeDialog } from "@/lib/tauri";
 import { MicTest } from "./MicTest";
 import { PttSettings } from "./PttSettings";
+import { BannedUsersModal } from "./BannedUsersModal";
 import type { ThemeName } from "@/lib/types";
 
 const THEMES: { id: ThemeName; label: string; desc: string; swatch: string[] }[] = [
@@ -25,9 +26,11 @@ const selectCls =
 export function SettingsModal({
   signOut,
   setMicDevice,
+  isAdmin = false,
 }: {
   signOut: () => Promise<void>;
   setMicDevice: (deviceId: string | null) => Promise<void>;
+  isAdmin?: boolean;
 }) {
   const {
     profile,
@@ -48,6 +51,7 @@ export function SettingsModal({
   const [micInputs, setMicInputs] = useState<string[]>([]);
   const [inputs, setInputs] = useState<MediaDeviceInfo[]>([]);
   const [outputs, setOutputs] = useState<MediaDeviceInfo[]>([]);
+  const [bannedOpen, setBannedOpen] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -345,6 +349,21 @@ export function SettingsModal({
           </div>
         </div>
 
+        {/* Admin-only: banned-user management */}
+        {isAdmin && (
+          <>
+            <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-text-1">
+              Yönetim
+            </h3>
+            <button
+              onClick={() => setBannedOpen(true)}
+              className="mb-6 w-full rounded-lg border border-edge bg-bg-2 py-2 text-xs font-bold text-text-0 transition-colors hover:border-accent"
+            >
+              Engellenmiş Kişileri Gör
+            </button>
+          </>
+        )}
+
         <button
           onClick={() => signOut()}
           className="w-full rounded-lg border border-danger/40 py-2 text-xs font-bold text-danger transition-colors hover:bg-danger hover:text-white"
@@ -352,6 +371,8 @@ export function SettingsModal({
           Log out
         </button>
       </div>
+
+      {bannedOpen && <BannedUsersModal onClose={() => setBannedOpen(false)} />}
     </div>
   );
 }

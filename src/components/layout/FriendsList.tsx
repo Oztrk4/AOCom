@@ -1,20 +1,27 @@
 "use client";
+import { useState } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { Avatar } from "@/components/ui/Avatar";
 import { PhoneIcon, SpeakerIcon } from "@/components/ui/icons";
 import { formatLastSeen } from "@/lib/time";
+import { AdminUserMenu } from "@/components/admin/AdminUserMenu";
 
 export function FriendsList({
   userId,
   sendRing,
+  isAdmin = false,
 }: {
   userId: string;
   sendRing: (targetId: string, channelId: string, channelName: string) => Promise<void>;
+  isAdmin?: boolean;
 }) {
   const { profiles, onlineIds, statuses, channels } = useAppStore();
+  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const friends = Object.values(profiles)
-    .filter((p) => p.id !== userId)
+    // Exclude self and fully banned (passive) members — they don't occupy
+    // space in the active squad list.
+    .filter((p) => p.id !== userId && p.is_active !== false)
     .sort((a, b) => {
       const ao = onlineIds.has(a.id) ? 0 : 1;
       const bo = onlineIds.has(b.id) ? 0 : 1;
@@ -44,7 +51,11 @@ export function FriendsList({
           return (
             <li
               key={f.id}
-              className="group flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-bg-2"
+              onClick={() => isAdmin && setMenuFor(f.id)}
+              className={`group flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-bg-2 ${
+                isAdmin ? "cursor-pointer" : ""
+              }`}
+              title={isAdmin ? "Yönetici işlemleri" : undefined}
             >
               <div className="relative">
                 <Avatar
@@ -61,11 +72,18 @@ export function FriendsList({
               </div>
               <div className="min-w-0 flex-1">
                 <p
-                  className={`truncate text-sm font-medium ${
+                  className={`flex items-center gap-1 truncate text-sm font-medium ${
                     online ? "text-text-0" : "text-text-1"
                   }`}
                 >
-                  {f.nickname}
+                  <span className="truncate">{f.nickname}</span>
+                  {/* Admin-only ban indicators */}
+                  {isAdmin && f.has_chat_ban && (
+                    <span title="Sohbet banlı" className="text-[10px]">💬🚫</span>
+                  )}
+                  {isAdmin && f.has_voice_ban && (
+                    <span title="Ses banlı" className="text-[10px]">🔇</span>
+                  )}
                 </p>
                 <p className="flex items-center gap-1 truncate text-[11px] text-text-1">
                   {voiceName ? (
@@ -82,7 +100,10 @@ export function FriendsList({
               </div>
               {online && (
                 <button
-                  onClick={() => ring(f.id)}
+                  onClick={(e) => {
+                    e.stopPropagation(); // don't open the admin menu
+                    ring(f.id);
+                  }}
                   className="hidden rounded-full bg-accent-soft p-2 text-accent transition-transform hover:scale-110 group-hover:block"
                   aria-label={`Call ${f.nickname}`}
                   title="Invite to voice"
@@ -99,6 +120,10 @@ export function FriendsList({
           </p>
         )}
       </ul>
+
+      {menuFor && (
+        <AdminUserMenu targetId={menuFor} onClose={() => setMenuFor(null)} />
+      )}
     </div>
   );
 }

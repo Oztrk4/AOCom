@@ -72,6 +72,12 @@ export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (
 export const CheckIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><polyline points="20 6 9 17 4 12"/></svg>
 );
+export const ScreenShareIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="9 10 12 7 15 10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>
+);
+export const ScreenShareOffIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+);
 export const ExpandIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
 );
