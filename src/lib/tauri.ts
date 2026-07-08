@@ -173,11 +173,20 @@ export async function nativeDialog(
 }
 
 /**
- * Open a URL/file in the user's default external app (browser for PDFs &
- * links, the OS handler for other file types). Uses Tauri's shell plugin
- * in the app; falls back to a new browser tab in dev.
+ * Open a chat attachment in the user's default browser/app. Hardened
+ * (audit C2): only https URLs on our own *.supabase.co Storage are ever
+ * passed to the shell, so a forged attachment_url (file://, UNC path,
+ * ms-msdt:, arbitrary scheme) can never reach ShellExecute. The capability
+ * is also scoped to `shell:default` (http/https/mailto/tel only) as a
+ * second layer.
  */
 export async function openExternal(url: string) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" || !u.hostname.endsWith(".supabase.co")) return;
+  } catch {
+    return;
+  }
   if (isTauri()) {
     const { open } = await import("@tauri-apps/plugin-shell");
     await open(url);

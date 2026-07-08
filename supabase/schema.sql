@@ -7,7 +7,7 @@
 
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
-  nickname text not null,
+  nickname text not null check (char_length(nickname) between 1 and 40),
   -- M3: avatar_url may only reference our own Supabase Storage bucket,
   -- never an arbitrary external URL (blocks IP-harvesting beacons).
   avatar_url text check (
@@ -40,8 +40,13 @@ create table public.messages (
   id bigint generated always as identity primary key,
   channel_id uuid not null references public.channels (id) on delete cascade,
   user_id uuid not null references public.profiles (id) on delete cascade,
-  content text not null default '',
-  attachment_url text,
+  -- H1: server-side length cap (client maxLength is bypassable via REST).
+  content text not null default '' check (char_length(content) <= 4000),
+  -- C2: attachments may only reference our own Storage bucket.
+  attachment_url text check (
+    attachment_url is null
+    or attachment_url ~ '^https://[a-z0-9-]+\.supabase\.co/storage/v1/object/public/'
+  ),
   created_at timestamptz not null default now()
 );
 
@@ -120,6 +125,27 @@ $$;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- C1: only the admin may change moderation flags. RLS gates the row but
+-- not columns, so a trigger blocks non-admins from editing their own
+-- is_active / has_chat_ban / has_voice_ban (nickname/avatar stay editable).
+create or replace function public.guard_profile_moderation()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if (auth.jwt() ->> 'email') <> 'samet.ozturk.uye@gmail.com' then
+    if new.is_active     is distinct from old.is_active
+    or new.has_chat_ban  is distinct from old.has_chat_ban
+    or new.has_voice_ban is distinct from old.has_voice_ban then
+      raise exception 'moderation flags are admin-only';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger guard_profile_moderation
+  before update on public.profiles
+  for each row execute function public.guard_profile_moderation();
 
 -- ── Row Level Security (friend-group model: any authenticated member
 --    can read everything; you can only write as yourself) ────────────

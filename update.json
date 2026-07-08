@@ -1,11 +1,11 @@
 {
-  "version": "0.1.1",
-  "notes": "AOCom v0.1.1\n• Sohbetteki dosyalar (PDF, Word, Excel, ZIP...) artık tıklayınca varsayılan tarayıcıda/uygulamada açılıyor\n• İlk yama güncellemesi — otomatik güncelleyici testi",
-  "pub_date": "2026-07-08T22:00:00Z",
+  "version": "0.1.2",
+  "notes": "AOCom v0.1.2 — Güvenlik yaması\n• Ban sistemi kurcalanmaya karşı sunucu tarafında kilitlendi\n• Sohbet ekindeki dosyalar yalnızca güvenli depolama alanından açılıyor\n• Mesaj ve takma ad uzunluk sınırları eklendi",
+  "pub_date": "2026-07-09T00:30:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTFSa1JSOGJkN3ZEZWJEWEk4ODJaQ05Wb3J6ZlAwVlRjaExyT0JxMlRqdkJyMFFxZW42TXdtV1hiRTN0dmtVYWEzQnA1MFdNUVIzaVllMlZjUVdmVEFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNTQ0MzczCWZpbGU6QU9Db21fMC4xLjFfeDY0LXNldHVwLmV4ZQp2anVHSjA2aWgvZWhqbHA1N3RXVEZKUWpxZ1lDaWd3Z0R4QjV5QzI3Y3FndndYc2ExZHZWOFNFWFhZZWIvOUpGczc1bklISjVydmpKVFgvVmFTcHFCQT09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.1.1/AOCom_0.1.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTAyalYvN09ueW1VTHFzRlZkNEZ2M0lCVGRHMlZMd2xNUHRHRzRXek41a3ltRjM0UVUwajRVL3F2bDNEOHhxUkczOWFuK05YaGRkRTRIaTdlWjE0MUFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNTQ2MDUyCWZpbGU6QU9Db21fMC4xLjJfeDY0LXNldHVwLmV4ZQpIUDgyNG9sRVZlcStNUUk1VHdWZ3UwZ283dWF0d3h0VEJFSXhEK2YrN2lsQWg5RmZyZEhOQVRvQ3pYTGJhcGdkVFpzN2dJY1ZoMVd4S2JEdjJkbjJDZz09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.1.2/AOCom_0.1.2_x64-setup.exe"
     }
   }
 }
