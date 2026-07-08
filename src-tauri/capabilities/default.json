@@ -36,6 +36,7 @@
     "global-shortcut:allow-is-registered",
     "updater:default",
     "process:default",
+    "shell:allow-open",
     {
       "identifier": "http:default",
       "allow": [{ "url": "https://*.supabase.co/**" }]

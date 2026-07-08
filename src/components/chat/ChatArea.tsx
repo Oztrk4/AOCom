@@ -4,6 +4,7 @@ import { useAppStore } from "@/stores/app-store";
 import { useMessages } from "@/hooks/useMessages";
 import { Avatar } from "@/components/ui/Avatar";
 import { renderMarkdown } from "@/lib/markdown";
+import { openExternal } from "@/lib/tauri";
 import { LinkPreview } from "./LinkPreview";
 import { EmojiPicker } from "./EmojiPicker";
 import {
@@ -150,17 +151,16 @@ export function ChatArea({
                       draggable={false}
                     />
                   ) : (
-                    <a
-                      href={m.attachment_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1.5 inline-flex items-center gap-2 rounded-lg border border-edge bg-bg-2 px-3 py-2 text-xs text-accent hover:border-accent"
+                    <button
+                      onClick={() => openExternal(m.attachment_url!)}
+                      className="mt-1.5 inline-flex items-center gap-2 rounded-lg border border-edge bg-bg-2 px-3 py-2 text-xs text-accent transition-colors hover:border-accent"
+                      title="Aç / indir"
                     >
                       <PaperclipIcon width={13} height={13} />
                       {decodeURIComponent(
                         m.attachment_url.split("/").pop() ?? "file"
-                      ).replace(/^\d+_/, "")}
-                    </a>
+                      ).replace(/^\d+_\d*_?/, "")}
+                    </button>
                   ))}
                 {url && <LinkPreview url={url} />}
               </div>

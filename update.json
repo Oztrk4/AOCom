@@ -1,11 +1,11 @@
 {
-  "version": "0.1.0",
-  "notes": "AOCom v0.1.0 — İlk resmi sürüm\n• Sesli/görüntülü sohbet ve ekran paylaşımı\n• Metin kanalları, sürükle-bırak dosya yükleme\n• Yönetici paneli, çoklu ban sistemi (sohbet/ses/uygulama)\n• Mat tema motoru, push-to-talk, otomatik güncelleme",
-  "pub_date": "2026-07-08T21:24:00Z",
+  "version": "0.1.1",
+  "notes": "AOCom v0.1.1\n• Sohbetteki dosyalar (PDF, Word, Excel, ZIP...) artık tıklayınca varsayılan tarayıcıda/uygulamada açılıyor\n• İlk yama güncellemesi — otomatik güncelleyici testi",
+  "pub_date": "2026-07-08T22:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaStnSjBqaHVMeW95dm5uYXRPOExteWRmczdtOWtjZFVjbXVlaFNLZ3hZb2FxUEE4d1hPRkxHWXZxcS9aYm5IUWZvcUtyZERMTkdORDBNQ28rMzdpOGdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNTQyMjk2CWZpbGU6QU9Db21fMC4xLjBfeDY0LXNldHVwLmV4ZQpqaW1DWkFhNkdmYStKVjJyUVIyODRFdUhKWTRjR2N4cUNNM3VNREZlRlhRNk00ZHY4d3hndFVQVkpBZkp5ZW1meUw0QWpXZjNTTGNsM1BMQlliaVhEZz09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.1.0/AOCom_0.1.0_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTFSa1JSOGJkN3ZEZWJEWEk4ODJaQ05Wb3J6ZlAwVlRjaExyT0JxMlRqdkJyMFFxZW42TXdtV1hiRTN0dmtVYWEzQnA1MFdNUVIzaVllMlZjUVdmVEFRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNTQ0MzczCWZpbGU6QU9Db21fMC4xLjFfeDY0LXNldHVwLmV4ZQp2anVHSjA2aWgvZWhqbHA1N3RXVEZKUWpxZ1lDaWd3Z0R4QjV5QzI3Y3FndndYc2ExZHZWOFNFWFhZZWIvOUpGczc1bklISjVydmpKVFgvVmFTcHFCQT09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.1.1/AOCom_0.1.1_x64-setup.exe"
     }
   }
 }

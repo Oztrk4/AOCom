@@ -172,6 +172,20 @@ export async function nativeDialog(
   await message(body, { title, kind });
 }
 
+/**
+ * Open a URL/file in the user's default external app (browser for PDFs &
+ * links, the OS handler for other file types). Uses Tauri's shell plugin
+ * in the app; falls back to a new browser tab in dev.
+ */
+export async function openExternal(url: string) {
+  if (isTauri()) {
+    const { open } = await import("@tauri-apps/plugin-shell");
+    await open(url);
+  } else {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
 /** Native yes/no confirmation dialog; falls back to window.confirm. */
 export async function nativeConfirm(
   title: string,
