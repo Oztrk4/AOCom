@@ -78,6 +78,30 @@ export interface RingPayload {
   channelName: string;
 }
 
+export interface RoomSession {
+  channel_id: string;
+  video_id: string | null;
+  title: string | null;
+  thumbnail: string | null;
+  duration: number | null;
+  added_by: string | null;
+  is_playing: boolean;
+  loop: boolean;
+  position_seconds: number;
+  updated_at: string;
+}
+
+export interface QueueItem {
+  id: number;
+  channel_id: string;
+  video_id: string;
+  title: string;
+  thumbnail: string | null;
+  duration: number | null;
+  added_by: string;
+  created_at: string;
+}
+
 export const QUALITY_PRESETS: Record<
   VideoQuality,
   { width: number; height: number; frameRate: number }

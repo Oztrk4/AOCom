@@ -1,6 +1,6 @@
 [package]
 name = "aocom"
-version = "0.1.2"
+version = "0.2.0"
 description = "AOCom — lightweight P2P voice, video and text for the squad"
 authors = ["Samet"]
 edition = "2021"

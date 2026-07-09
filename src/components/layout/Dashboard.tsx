@@ -169,6 +169,7 @@ export function Dashboard({
             <VoiceGrid
               userId={userId}
               channel={voiceChannel}
+              isAdmin={isAdminEmail(userEmail)}
               localStream={rtc.localStream}
               remoteStreams={rtc.remoteStreams}
               localScreen={rtc.localScreen}

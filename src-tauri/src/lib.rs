@@ -228,7 +228,8 @@ pub fn run() {
                 "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
                 "--disable-background-timer-throttling \
                  --disable-renderer-backgrounding \
-                 --disable-backgrounding-occluded-windows",
+                 --disable-backgrounding-occluded-windows \
+                 --autoplay-policy=no-user-gesture-required",
             );
         }
     }

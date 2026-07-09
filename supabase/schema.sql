@@ -60,6 +60,32 @@ create table public.active_status (
   updated_at timestamptz not null default now()
 );
 
+-- Music: one synchronized playback state per voice channel + a FIFO queue.
+create table public.room_sessions (
+  channel_id uuid primary key references public.channels (id) on delete cascade,
+  video_id text,
+  title text,
+  thumbnail text,
+  duration int,
+  added_by uuid references public.profiles (id) on delete set null,
+  is_playing boolean not null default false,
+  loop boolean not null default false,
+  position_seconds double precision not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+create table public.music_queue (
+  id bigint generated always as identity primary key,
+  channel_id uuid not null references public.channels (id) on delete cascade,
+  video_id text not null,
+  title text not null default '',
+  thumbnail text,
+  duration int,
+  added_by uuid not null references public.profiles (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+create index music_queue_channel_idx on public.music_queue (channel_id, created_at);
+
 -- ── Auto-create a profile + status row on signup ────────────────────
 
 create or replace function public.handle_new_user()
@@ -154,6 +180,8 @@ alter table public.profiles enable row level security;
 alter table public.channels enable row level security;
 alter table public.messages enable row level security;
 alter table public.active_status enable row level security;
+alter table public.room_sessions enable row level security;
+alter table public.music_queue enable row level security;
 
 -- Own row always readable (so the live-ban kick can see is_active flip);
 -- everyone else's row only while the reader is active.
@@ -203,6 +231,25 @@ create policy "admin deletes any message"
 create policy "status readable by active members"
   on public.active_status for select to authenticated
   using ((select public.is_active_user()));
+
+-- Music session + queue (active members read; adder/admin delete queue).
+create policy "sessions readable" on public.room_sessions
+  for select to authenticated using ((select public.is_active_user()));
+create policy "sessions writable by active" on public.room_sessions
+  for all to authenticated
+  using ((select public.is_active_user()))
+  with check ((select public.is_active_user()));
+create policy "queue readable" on public.music_queue
+  for select to authenticated using ((select public.is_active_user()));
+create policy "queue add as self" on public.music_queue
+  for insert to authenticated
+  with check (added_by = auth.uid() and (select public.is_active_user()));
+create policy "queue delete own or admin" on public.music_queue
+  for delete to authenticated
+  using (
+    added_by = auth.uid()
+    or (auth.jwt() ->> 'email') = 'samet.ozturk.uye@gmail.com'
+  );
 create policy "insert own status"
   on public.active_status for insert to authenticated
   with check (auth.uid() = user_id);
@@ -216,6 +263,8 @@ alter publication supabase_realtime add table public.messages;
 alter publication supabase_realtime add table public.active_status;
 alter publication supabase_realtime add table public.profiles;
 alter publication supabase_realtime add table public.channels;
+alter publication supabase_realtime add table public.room_sessions;
+alter publication supabase_realtime add table public.music_queue;
 
 -- ── Realtime Authorization: private voice/ring/presence channels ─────
 -- Only active members may subscribe to (receive) or broadcast on the
@@ -230,6 +279,7 @@ create policy "active users receive squad realtime"
     case
       when realtime.topic() like 'voice:%' then (select public.can_use_voice())
       when realtime.topic() like 'ring:%'
+        or realtime.topic() like 'music:%'
         or realtime.topic() = 'presence:online' then (select public.is_active_user())
       else false
     end
@@ -241,6 +291,7 @@ create policy "active users send squad realtime"
     case
       when realtime.topic() like 'voice:%' then (select public.can_use_voice())
       when realtime.topic() like 'ring:%'
+        or realtime.topic() like 'music:%'
         or realtime.topic() = 'presence:online' then (select public.is_active_user())
       else false
     end

@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { applySinkId } from "@/lib/media";
+import { useMusicPlayer } from "@/hooks/useMusicPlayer";
+import { MusicPanel } from "@/components/music/MusicPanel";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   CamIcon,
@@ -12,6 +14,7 @@ import {
   HeadphonesOffIcon,
   MicIcon,
   MicOffIcon,
+  MusicIcon,
   PhoneOffIcon,
   ScreenShareIcon,
   ScreenShareOffIcon,
@@ -98,6 +101,7 @@ function Tile({
 export function VoiceGrid({
   userId,
   channel,
+  isAdmin = false,
   localStream,
   remoteStreams,
   localScreen,
@@ -109,6 +113,7 @@ export function VoiceGrid({
 }: {
   userId: string;
   channel: Channel;
+  isAdmin?: boolean;
   localStream: MediaStream | null;
   remoteStreams: Record<string, MediaStream>;
   localScreen: MediaStream | null;
@@ -133,6 +138,10 @@ export function VoiceGrid({
     setTheaterMode,
   } = useAppStore();
 
+  // Room music player (persists while in the voice channel).
+  const music = useMusicPlayer(channel.id, userId, isAdmin);
+  const [musicOpen, setMusicOpen] = useState(false);
+
   // PTT: the self tile glows while transmitting (key held) — instant
   // "am I live?" feedback. Voice activity mode keeps analyser-driven glow.
   const selfSpeaking =
@@ -155,7 +164,15 @@ export function VoiceGrid({
             : "grid-cols-3";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {musicOpen && (
+        <MusicPanel
+          music={music}
+          userId={userId}
+          isAdmin={isAdmin}
+          onClose={() => setMusicOpen(false)}
+        />
+      )}
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-edge px-4">
         <h3 className="text-[10px] font-bold uppercase tracking-widest text-accent">
           🔊 {channel.name}
@@ -278,6 +295,18 @@ export function VoiceGrid({
             title={localScreen ? "Paylaşımı durdur" : "Ekranı Paylaş"}
           >
             {localScreen ? <ScreenShareIcon /> : <ScreenShareOffIcon />}
+          </button>
+          <button
+            onClick={() => setMusicOpen((o) => !o)}
+            className={`rounded-full p-2.5 transition-colors ${
+              musicOpen || music.session?.is_playing
+                ? "bg-accent/80 text-bg-0"
+                : "bg-bg-2 text-text-0 hover:bg-bg-3"
+            }`}
+            aria-label="Müzik"
+            title="Müzik"
+          >
+            <MusicIcon />
           </button>
           <button
             onClick={() => leaveVoice()}
