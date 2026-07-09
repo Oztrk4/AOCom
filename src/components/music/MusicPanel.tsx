@@ -4,9 +4,12 @@ import { useAppStore } from "@/stores/app-store";
 import { useMusicPlayer } from "@/hooks/useMusicPlayer";
 import { formatDuration } from "@/lib/youtube";
 import {
+  GripIcon,
   PauseIcon,
   PlayIcon,
+  Repeat1Icon,
   RepeatIcon,
+  ShuffleIcon,
   SkipBackIcon,
   SkipForwardIcon,
   TrashIcon,
@@ -36,18 +39,24 @@ export function MusicPanel({
     skipNeeded,
     position,
     localVolume,
+    canNext,
+    canShuffle,
     setLocalVolume,
     addTrack,
     playPause,
     next,
     prev,
-    toggleLoop,
+    cycleLoop,
+    shuffle,
+    playSpecific,
+    reorderQueue,
     removeFromQueue,
   } = music;
 
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   const submit = async () => {
     if (!input.trim() || busy) return;
@@ -55,26 +64,29 @@ export function MusicPanel({
     setErr(null);
     const res = await addTrack(input);
     setBusy(false);
-    if (res === "invalid") {
-      setErr("Bir YouTube linki veya video ID'si yapıştır.");
-    } else {
-      setInput("");
-    }
+    if (res === "notfound") setErr("Sonuç bulunamadı — bir YouTube linki dene.");
+    else setInput("");
   };
 
   const playing = session?.is_playing ?? false;
   const dur = session?.duration ?? 0;
   const pct = dur > 0 ? Math.min(100, (position / dur) * 100) : 0;
-  // Non-admins who don't own the current track will trigger a vote on "next".
+  const loopMode = session?.loop_mode ?? "none";
   const willVote = !isAdmin && session?.added_by !== userId;
   const nick = (id: string | null | undefined) =>
     (id && profiles[id]?.nickname) || "Bilinmeyen";
 
+  const loopTitle =
+    loopMode === "track"
+      ? "Şarkıyı tekrarla"
+      : loopMode === "queue"
+        ? "Sırayı tekrarla"
+        : "Tekrar kapalı";
+
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-bg-1/95 backdrop-blur-md">
-      {/* Header */}
       <div className="flex h-12 shrink-0 items-center justify-between border-b border-edge px-4">
-        <h3 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-accent">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-accent">
           🎵 Müzik · {listeners} dinleyici
         </h3>
         <button
@@ -86,14 +98,14 @@ export function MusicPanel({
         </button>
       </div>
 
-      {/* Search */}
+      {/* Search (URL or free text) */}
       <div className="shrink-0 p-3">
         <div className="flex items-center gap-2 rounded-xl border border-edge bg-bg-2 px-3 py-1.5 focus-within:border-accent">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
-            placeholder="YouTube linki / video ID yapıştır…"
+            placeholder="Şarkı adı ara veya YouTube linki yapıştır…"
             className="flex-1 bg-transparent py-1 text-sm outline-none placeholder-text-1 select-text"
           />
           <button
@@ -112,8 +124,8 @@ export function MusicPanel({
         {session?.video_id ? (
           <>
             <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               {session.thumbnail && (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={session.thumbnail}
                   alt=""
@@ -124,13 +136,15 @@ export function MusicPanel({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-text-0">
                   {session.title ?? session.video_id}
+                  {!playing && !canNext && (
+                    <span className="ml-1 text-[10px] text-text-1">(bitti)</span>
+                  )}
                 </p>
                 <p className="truncate text-[11px] text-text-1">
                   Ekleyen: {nick(session.added_by)}
                 </p>
               </div>
             </div>
-            {/* Progress */}
             <div className="mt-2 flex items-center gap-2">
               <span className="text-[10px] tabular-nums text-text-1">
                 {formatDuration(position)}
@@ -151,10 +165,19 @@ export function MusicPanel({
             {/* Controls */}
             <div className="mt-3 flex items-center justify-center gap-2">
               <button
+                onClick={() => shuffle()}
+                disabled={!canShuffle || queue.length < 2}
+                className="rounded-full bg-bg-2 p-2 text-text-1 transition-colors hover:bg-bg-3 hover:text-text-0 disabled:opacity-30"
+                aria-label="Karıştır"
+                title={canShuffle ? "Karıştır" : "Sadece admin / lider"}
+              >
+                <ShuffleIcon width={15} height={15} />
+              </button>
+              <button
                 onClick={prev}
                 className="rounded-full bg-bg-2 p-2 text-text-0 hover:bg-bg-3"
-                aria-label="Baştan"
-                title="Baştan başlat"
+                aria-label="Önceki"
+                title="Önceki"
               >
                 <SkipBackIcon width={16} height={16} />
               </button>
@@ -167,24 +190,30 @@ export function MusicPanel({
               </button>
               <button
                 onClick={next}
-                className="relative rounded-full bg-bg-2 p-2 text-text-0 hover:bg-bg-3"
+                disabled={!canNext}
+                className="rounded-full bg-bg-2 p-2 text-text-0 hover:bg-bg-3 disabled:opacity-30"
                 aria-label="Sonraki"
-                title={willVote ? "Atlamak için oy ver" : "Sonraki"}
+                title={!canNext ? "Son şarkı" : willVote ? "Atlamak için oy ver" : "Sonraki"}
               >
                 <SkipForwardIcon width={16} height={16} />
               </button>
               <button
-                onClick={toggleLoop}
+                onClick={cycleLoop}
                 className={`rounded-full p-2 transition-colors ${
-                  session.loop ? "bg-accent-soft text-accent" : "bg-bg-2 text-text-1 hover:bg-bg-3"
+                  loopMode !== "none"
+                    ? "bg-accent-soft text-accent"
+                    : "bg-bg-2 text-text-1 hover:bg-bg-3"
                 }`}
-                aria-label="Tekrarla"
-                title="Tekrarla"
+                aria-label="Döngü"
+                title={loopTitle}
               >
-                <RepeatIcon width={16} height={16} />
+                {loopMode === "track" ? (
+                  <Repeat1Icon width={16} height={16} />
+                ) : (
+                  <RepeatIcon width={16} height={16} />
+                )}
               </button>
             </div>
-            {/* Vote-skip indicator */}
             {skipVotes > 0 && (
               <p className="mt-2 text-center text-[10px] font-semibold text-accent">
                 Atlama oyu: {skipVotes}/{skipNeeded}
@@ -197,7 +226,6 @@ export function MusicPanel({
           </p>
         )}
 
-        {/* Per-user local volume (never affects other listeners) */}
         <div className="mt-3 flex items-center gap-2">
           <VolumeIcon width={14} height={14} className="text-text-1" />
           <input
@@ -215,7 +243,7 @@ export function MusicPanel({
         </div>
       </div>
 
-      {/* Queue */}
+      {/* Queue — click to play, drag to reorder */}
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         <p className="px-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-text-1">
           Sıradaki ({queue.length})
@@ -224,30 +252,51 @@ export function MusicPanel({
           <p className="p-3 text-center text-[11px] text-text-1">Sıra boş.</p>
         ) : (
           <ul className="space-y-1">
-            {queue.map((t) => {
+            {queue.map((t, idx) => {
               const canDelete = t.added_by === userId || isAdmin;
               return (
                 <li
                   key={t.id}
-                  className="group flex items-center gap-2 rounded-lg p-1.5 hover:bg-bg-2"
+                  draggable
+                  onDragStart={() => setDragIdx(idx)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (dragIdx !== null && dragIdx !== idx) reorderQueue(dragIdx, idx);
+                    setDragIdx(null);
+                  }}
+                  onDragEnd={() => setDragIdx(null)}
+                  className={`group flex items-center gap-2 rounded-lg p-1.5 transition-colors hover:bg-bg-2 ${
+                    dragIdx === idx ? "opacity-50" : ""
+                  }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {t.thumbnail && (
-                    <img
-                      src={t.thumbnail}
-                      alt=""
-                      className="h-8 w-12 shrink-0 rounded object-cover"
-                      draggable={false}
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs text-text-0">{t.title}</p>
-                    <p className="truncate text-[10px] text-text-1">{nick(t.added_by)}</p>
-                  </div>
+                  <span className="shrink-0 cursor-grab text-text-1/60" title="Sürükle">
+                    <GripIcon width={13} height={13} />
+                  </span>
+                  <button
+                    onClick={() => playSpecific(t)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    title="Bu şarkıyı çal"
+                  >
+                    {t.thumbnail && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={t.thumbnail}
+                        alt=""
+                        className="h-8 w-12 shrink-0 rounded object-cover"
+                        draggable={false}
+                      />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs text-text-0">{t.title}</span>
+                      <span className="block truncate text-[10px] text-text-1">
+                        {nick(t.added_by)}
+                      </span>
+                    </span>
+                  </button>
                   {canDelete && (
                     <button
                       onClick={() => removeFromQueue(t.id)}
-                      className="rounded p-1 text-text-1 opacity-0 hover:text-danger group-hover:opacity-100"
+                      className="shrink-0 rounded p-1 text-text-1 opacity-0 hover:text-danger group-hover:opacity-100"
                       aria-label="Sıradan kaldır"
                     >
                       <TrashIcon width={13} height={13} />

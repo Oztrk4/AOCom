@@ -50,6 +50,29 @@ export async function fetchYouTubeMeta(id: string): Promise<YtMeta> {
   return { videoId: id, title: id, thumbnail: thumb(id) };
 }
 
+/**
+ * Free-text search without a Data API key: fetch YouTube's results page
+ * (through the SSRF-safe Rust command, which bypasses CORS) and pull the
+ * first video id out of the embedded ytInitialData. Fragile by nature —
+ * if YouTube changes its markup this returns null and the caller falls
+ * back to asking for a link. Then oEmbed fills title + thumbnail.
+ */
+export async function searchYouTube(query: string): Promise<YtMeta | null> {
+  const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+  const html = await nativeFetchText(url);
+  if (!html) return null;
+  const m = html.match(/"videoId":"([\w-]{11})"/);
+  if (!m) return null;
+  return fetchYouTubeMeta(m[1]);
+}
+
+/** Resolve any input (URL, raw id, or free-text query) to track metadata. */
+export async function resolveTrack(input: string): Promise<YtMeta | null> {
+  const id = parseYouTubeId(input);
+  if (id) return fetchYouTubeMeta(id);
+  return searchYouTube(input);
+}
+
 /** Loads the IFrame Player API once and resolves when `window.YT` is ready. */
 let apiPromise: Promise<void> | null = null;
 export function loadYouTubeApi(): Promise<void> {

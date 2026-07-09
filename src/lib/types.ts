@@ -78,6 +78,16 @@ export interface RingPayload {
   channelName: string;
 }
 
+export type LoopMode = "none" | "track" | "queue";
+
+export interface HistoryEntry {
+  video_id: string;
+  title: string | null;
+  thumbnail: string | null;
+  duration: number | null;
+  added_by: string | null;
+}
+
 export interface RoomSession {
   channel_id: string;
   video_id: string | null;
@@ -86,7 +96,8 @@ export interface RoomSession {
   duration: number | null;
   added_by: string | null;
   is_playing: boolean;
-  loop: boolean;
+  loop_mode: LoopMode;
+  history: HistoryEntry[];
   position_seconds: number;
   updated_at: string;
 }
@@ -99,6 +110,7 @@ export interface QueueItem {
   thumbnail: string | null;
   duration: number | null;
   added_by: string;
+  position: number;
   created_at: string;
 }
 

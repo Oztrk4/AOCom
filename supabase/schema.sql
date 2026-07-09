@@ -69,7 +69,8 @@ create table public.room_sessions (
   duration int,
   added_by uuid references public.profiles (id) on delete set null,
   is_playing boolean not null default false,
-  loop boolean not null default false,
+  loop_mode text not null default 'none' check (loop_mode in ('none', 'track', 'queue')),
+  history jsonb not null default '[]'::jsonb,
   position_seconds double precision not null default 0,
   updated_at timestamptz not null default now()
 );
@@ -82,9 +83,10 @@ create table public.music_queue (
   thumbnail text,
   duration int,
   added_by uuid not null references public.profiles (id) on delete cascade,
+  position double precision not null default 0,
   created_at timestamptz not null default now()
 );
-create index music_queue_channel_idx on public.music_queue (channel_id, created_at);
+create index music_queue_channel_idx on public.music_queue (channel_id, position);
 
 -- ── Auto-create a profile + status row on signup ────────────────────
 

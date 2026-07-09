@@ -203,11 +203,12 @@ async fn fetch_link_preview(url: String) -> Result<String, String> {
         return Err(format!("http {}", resp.status().as_u16()));
     }
 
-    // Cap the body at 512 KiB — OpenGraph metadata lives in the <head>.
+    // Cap the body at 3 MiB — enough for OpenGraph <head> metadata and for
+    // the ytInitialData block on a YouTube search results page.
     let mut body: Vec<u8> = Vec::new();
     while let Some(chunk) = resp.chunk().await.map_err(|e| e.to_string())? {
         body.extend_from_slice(&chunk);
-        if body.len() > 512 * 1024 {
+        if body.len() > 3 * 1024 * 1024 {
             break;
         }
     }
