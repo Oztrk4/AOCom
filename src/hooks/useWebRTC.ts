@@ -46,6 +46,8 @@ interface Peer {
   camTransceiver: RTCRtpTransceiver | null;
   /** Pre-negotiated screen transceiver — screen share via replaceTrack. */
   screenTransceiver: RTCRtpTransceiver | null;
+  /** ICE candidates that arrived before the remote description was set. */
+  pendingCandidates: RTCIceCandidateInit[];
 }
 
 export function useWebRTC(userId: string | null) {
@@ -142,6 +144,8 @@ export function useWebRTC(userId: string | null) {
       const pc = new RTCPeerConnection(RTC_CONFIG);
       const peer: Peer = {
         pc,
+        // Deterministic politeness from sorted UIDs: the peer with the
+        // lexicographically larger id is polite (yields on glare).
         polite: userId > peerId,
         makingOffer: false,
         ignoreOffer: false,
@@ -149,6 +153,7 @@ export function useWebRTC(userId: string | null) {
         screenStream: null,
         camTransceiver: null,
         screenTransceiver: null,
+        pendingCandidates: [],
       };
       peersRef.current.set(peerId, peer);
 
@@ -257,17 +262,29 @@ export function useWebRTC(userId: string | null) {
           peer.ignoreOffer = !peer.polite && offerCollision;
           if (peer.ignoreOffer) return;
 
-          await pc.setRemoteDescription(desc);
+          await pc.setRemoteDescription(desc); // rolls back our offer if polite
+          // Remote description is now set → drain any candidates that
+          // arrived before it (the core fix for the "can't hear until
+          // restart" race: candidates were being dropped).
+          for (const cand of peer.pendingCandidates.splice(0)) {
+            await pc.addIceCandidate(cand).catch(() => {});
+          }
           if (desc.type === "offer") {
             await pc.setLocalDescription();
             if (pc.localDescription)
               sendSignal(peerId, { kind: "sdp", description: pc.localDescription });
           }
         } else if (payload.kind === "ice") {
-          try {
-            await pc.addIceCandidate(payload.candidate);
-          } catch (err) {
-            if (!peer.ignoreOffer) throw err;
+          // Queue candidates until the remote description exists, otherwise
+          // addIceCandidate throws and the candidate is lost.
+          if (!pc.remoteDescription || !pc.remoteDescription.type) {
+            peer.pendingCandidates.push(payload.candidate);
+          } else {
+            try {
+              await pc.addIceCandidate(payload.candidate);
+            } catch (err) {
+              if (!peer.ignoreOffer) throw err;
+            }
           }
         }
       } catch (err) {
@@ -350,22 +367,34 @@ export function useWebRTC(userId: string | null) {
           }
         });
 
-      // Poll analysers for active-speaker glow (~5 Hz keeps CPU negligible).
+      // Active-speaker detection with EMA smoothing + a 300ms hang time so
+      // continuous speech never flickers the glow on micro volume dips.
+      const buf = new Uint8Array(256);
+      const ema = new Map<string, number>(); // smoothed RMS per id
+      const lastActive = new Map<string, number>(); // last time above threshold
+      const THRESHOLD = 6;
+      const HANG_MS = 300;
       speakTimerRef.current = setInterval(() => {
-        const buf = new Uint8Array(256);
-        const now = new Set<string>();
+        const t = Date.now();
         for (const [id, analyser] of analysersRef.current) {
           analyser.getByteTimeDomainData(buf);
           let sum = 0;
           for (const v of buf) sum += (v - 128) * (v - 128);
-          if (Math.sqrt(sum / buf.length) > 6) now.add(id);
+          const rms = Math.sqrt(sum / buf.length);
+          const smoothed = (ema.get(id) ?? 0) * 0.6 + rms * 0.4;
+          ema.set(id, smoothed);
+          if (smoothed > THRESHOLD) lastActive.set(id, t);
+        }
+        const now = new Set<string>();
+        for (const [id, ts] of lastActive) {
+          if (t - ts < HANG_MS && analysersRef.current.has(id)) now.add(id);
         }
         setSpeakingIds((prev) => {
           if (prev.size === now.size && [...prev].every((x) => now.has(x)))
             return prev;
           return now;
         });
-      }, 200);
+      }, 100);
 
       return true;
     },

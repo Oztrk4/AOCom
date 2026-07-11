@@ -1,11 +1,11 @@
 {
-  "version": "0.2.1",
-  "notes": "AOCom v0.2.1 — Müzik cilası\n• Şarkı adıyla arama (link zorunlu değil)\n• Üçlü döngü (kapalı/şarkı/sıra) ve Karıştır\n• Sıradan tıkla-çal ve sürükle-bırak sıralama\n• Sıra sonu ve Önceki/Sonraki mantığı düzeltildi",
-  "pub_date": "2026-07-09T18:05:00Z",
+  "version": "0.2.2",
+  "notes": "AOCom v0.2.2 — Ses ve UX düzeltmeleri\n• Sesli sohbet bağlantı/asimetrik ses hatası giderildi (ICE kuyruğu + perfect negotiation)\n• Konuşma göstergesi titremesi düzeltildi (yumuşatma + 300ms bekleme)\n• 'Yazıyor…' göstergesi, arkaplan bildirimleri, odaya giriş/çıkış sesi\n• Müzik: Önceki kaldırıldı, sıra sonunda Sonraki oynatıcıyı sıfırlıyor",
+  "pub_date": "2026-07-11T03:40:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaSsxL0RjSUVYSHZGQzMycU9xaGJpRCtwaStmK3Bxc0d5VlJpV0dTNWlnOU1Pak5rQnJTYkliQ0pRRXB2cnlnbGl6T24zcjBhUkM4YldSekZTYlNmRmdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNjA5NDEzCWZpbGU6QU9Db21fMC4yLjFfeDY0LXNldHVwLmV4ZQpsVGR0bGpoaStZeUdJSjZJc0JaeXFhSVM2ZGxvTnBGRW1qa3RQTHlnNDE0Yk9mdStYQTFqTWVOVmZTbzF3MUJ4OEFIdjFteHNmZ2hhRk93Z0ZVRlBEZz09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.1/AOCom_0.2.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTZFM2dHVFdjclUvc1FWQlBHWllYUlJmL0FTMEI1b21KR0ZFVm5GSGo0WTFmcnczU1pCRC9jNlBrSXFuSktDdDhMbFJETVQwTXBuVUdSdXRlY25aOWdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNzMwMTM4CWZpbGU6QU9Db21fMC4yLjJfeDY0LXNldHVwLmV4ZQpVeWE1Q0RPTS9EZS80dXpRRzRSNkE1Qys1YVdiU09mZ0NDeWZmSWhidG5mUnpudlBkcTJxTFpvQ0E3Q3Q0dzgwRmorcjBLR0NkSjA2d1ZBNUQyR1BCZz09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.2/AOCom_0.2.2_x64-setup.exe"
     }
   }
 }

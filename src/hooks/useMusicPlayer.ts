@@ -192,8 +192,17 @@ export function useMusicPlayer(
       // Loop-queue with nothing else queued → replay current.
       await writeSession({ position_seconds: 0, is_playing: true });
     } else {
-      // End of queue: keep the final track's metadata, just stop.
-      await writeSession({ is_playing: false, position_seconds: 0 });
+      // End of queue → fully reset the player to its empty/idle state.
+      await writeSession({
+        video_id: null,
+        title: null,
+        thumbnail: null,
+        duration: null,
+        added_by: null,
+        is_playing: false,
+        position_seconds: 0,
+        history: [],
+      });
     }
   }, [channelId, userId, writeSession, insertQueueRow]);
 
@@ -211,37 +220,6 @@ export function useMusicPlayer(
     const next = LOOP_ORDER[(LOOP_ORDER.indexOf(s.loop_mode) + 1) % 3];
     void writeSession({ loop_mode: next });
   }, [writeSession]);
-
-  /** Previous: pop from history, re-insert current at end of queue. */
-  const prev = useCallback(async () => {
-    const s = sessionRef.current;
-    if (!s?.video_id) return;
-    const hist = s.history ?? [];
-    if (hist.length > 0) {
-      const target = hist[hist.length - 1];
-      if (s.video_id) {
-        await insertQueueRow({
-          video_id: s.video_id,
-          title: s.title ?? "",
-          thumbnail: s.thumbnail,
-          duration: s.duration,
-          added_by: s.added_by ?? userId,
-        });
-      }
-      await writeSession({
-        video_id: target.video_id,
-        title: target.title,
-        thumbnail: target.thumbnail,
-        duration: target.duration,
-        added_by: target.added_by,
-        is_playing: true,
-        position_seconds: 0,
-        history: hist.slice(0, -1),
-      });
-    } else {
-      await writeSession({ position_seconds: 0, is_playing: true });
-    }
-  }, [userId, writeSession, insertQueueRow]);
 
   const requestSkip = useCallback(() => {
     const s = sessionRef.current;
@@ -261,7 +239,9 @@ export function useMusicPlayer(
 
   const next = useCallback(() => {
     const s = sessionRef.current;
-    if (!s?.video_id || queueRef.current.length === 0) return; // disabled on final track
+    if (!s?.video_id) return;
+    // On the final track, Next resets the player to idle (via performAdvance's
+    // empty-queue branch). Non-admins still vote unless they own the track.
     if (isAdmin || s.added_by === userId) void performAdvance();
     else requestSkip();
   }, [isAdmin, userId, performAdvance, requestSkip]);
@@ -480,13 +460,12 @@ export function useMusicPlayer(
     skipNeeded: Math.floor(listeners / 2) + 1,
     position,
     localVolume,
-    canNext: queue.length > 0,
+    canNext: !!session?.video_id,
     canShuffle,
     setLocalVolume,
     addTrack,
     playPause,
     next,
-    prev,
     cycleLoop,
     shuffle,
     playSpecific,

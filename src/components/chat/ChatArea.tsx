@@ -40,10 +40,8 @@ export function ChatArea({
   const activeTextChannel = useAppStore((s) => s.activeTextChannel);
   const profiles = useAppStore((s) => s.profiles);
   const chatBanned = useAppStore((s) => s.profile?.has_chat_ban ?? false);
-  const { messages, loading, sendMessage, deleteMessage } = useMessages(
-    activeTextChannel?.id ?? null,
-    userId
-  );
+  const { messages, loading, typingUsers, notifyTyping, sendMessage, deleteMessage } =
+    useMessages(activeTextChannel?.id ?? null, userId);
 
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -183,6 +181,15 @@ export function ChatArea({
 
       {/* Input bar */}
       <div className="shrink-0 px-4 pb-4">
+        {/* Ephemeral "is typing" indicator */}
+        <div className="h-4 px-1 text-[11px] italic text-text-1">
+          {typingUsers.length > 0 &&
+            (typingUsers.length === 1
+              ? `${typingUsers[0]} yazıyor…`
+              : typingUsers.length === 2
+                ? `${typingUsers[0]} ve ${typingUsers[1]} yazıyor…`
+                : `${typingUsers.length} kişi yazıyor…`)}
+        </div>
         {file && (
           <div className="mb-1 flex items-center gap-2 rounded-t-lg border border-b-0 border-edge bg-bg-2 px-3 py-2 text-xs text-text-1">
             <PaperclipIcon width={12} height={12} />
@@ -220,7 +227,10 @@ export function ChatArea({
           <input
             ref={textInputRef}
             value={chatBanned ? "" : draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (!chatBanned && e.target.value) notifyTyping();
+            }}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && submit()}
             disabled={chatBanned}
             placeholder={

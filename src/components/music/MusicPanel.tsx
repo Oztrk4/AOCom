@@ -10,7 +10,6 @@ import {
   Repeat1Icon,
   RepeatIcon,
   ShuffleIcon,
-  SkipBackIcon,
   SkipForwardIcon,
   TrashIcon,
   VolumeIcon,
@@ -45,7 +44,6 @@ export function MusicPanel({
     addTrack,
     playPause,
     next,
-    prev,
     cycleLoop,
     shuffle,
     playSpecific,
@@ -136,9 +134,6 @@ export function MusicPanel({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-text-0">
                   {session.title ?? session.video_id}
-                  {!playing && !canNext && (
-                    <span className="ml-1 text-[10px] text-text-1">(bitti)</span>
-                  )}
                 </p>
                 <p className="truncate text-[11px] text-text-1">
                   Ekleyen: {nick(session.added_by)}
@@ -172,14 +167,6 @@ export function MusicPanel({
                 title={canShuffle ? "Karıştır" : "Sadece admin / lider"}
               >
                 <ShuffleIcon width={15} height={15} />
-              </button>
-              <button
-                onClick={prev}
-                className="rounded-full bg-bg-2 p-2 text-text-0 hover:bg-bg-3"
-                aria-label="Önceki"
-                title="Önceki"
-              >
-                <SkipBackIcon width={16} height={16} />
               </button>
               <button
                 onClick={playPause}

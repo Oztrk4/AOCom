@@ -8,6 +8,7 @@ import { useRing } from "@/hooks/useRing";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
+import { playJoinChime, playLeaveChime } from "@/lib/sounds";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { DragDropUpload } from "@/components/chat/DragDropUpload";
 import { Titlebar } from "./Titlebar";
@@ -71,11 +72,13 @@ export function Dashboard({
       const ok = await rtc.join(channel.id);
       // Mic blocked/unavailable: roll back cleanly, the banner explains why.
       if (!ok) useAppStore.getState().setVoiceChannel(null);
+      else playJoinChime(); // local-only "landing" chime
     },
     [rtc]
   );
 
   const leaveVoice = useCallback(async () => {
+    playLeaveChime(); // local-only "leave" chime
     await rtc.leave();
     const state = useAppStore.getState();
     state.setVoiceChannel(null);

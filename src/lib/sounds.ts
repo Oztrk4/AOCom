@@ -33,6 +33,28 @@ function tone(
   osc.stop(start + dur + 0.05);
 }
 
+/**
+ * Local-only voice room chimes (Web Audio, no asset, never sent over
+ * WebRTC — they play solely on this machine).
+ */
+export function playJoinChime() {
+  const c = audioCtx();
+  const t = c.currentTime + 0.02;
+  // Ascending G4 → C5 → E5 "landing" arpeggio.
+  tone(c, 392.0, t, 0.12, 0.09, "sine");
+  tone(c, 523.25, t + 0.1, 0.12, 0.09, "sine");
+  tone(c, 659.25, t + 0.2, 0.18, 0.1, "sine");
+}
+
+export function playLeaveChime() {
+  const c = audioCtx();
+  const t = c.currentTime + 0.02;
+  // Descending E5 → C5 → G4 "leaving" arpeggio.
+  tone(c, 659.25, t, 0.12, 0.09, "sine");
+  tone(c, 523.25, t + 0.1, 0.12, 0.08, "sine");
+  tone(c, 392.0, t + 0.2, 0.2, 0.08, "sine");
+}
+
 /** Caller side: soft two-pulse ringback chord (A4 + C#5), every 2.4s. */
 export function startOutgoingRing(): () => void {
   const c = audioCtx();
