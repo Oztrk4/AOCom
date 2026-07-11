@@ -219,6 +219,14 @@ async fn fetch_link_preview(url: String) -> Result<String, String> {
 pub fn run() {
     #[cfg(windows)]
     {
+        // Explicit AppUserModelID matching the installer's Start-Menu
+        // shortcut (= the bundle identifier). Without this, Windows Action
+        // Center silently drops the toast payloads from our notifications.
+        unsafe {
+            let _ = windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(
+                windows::core::w!("com.aocom.desktop"),
+            );
+        }
         assert_realtime_process_priority();
         // Chromium-level guarantee: the renderer that runs the WebRTC/
         // Web Audio pipeline is never timer-throttled or backgrounded

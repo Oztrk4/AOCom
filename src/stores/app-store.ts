@@ -36,6 +36,12 @@ interface AppState {
   micError: string | null;
   micDeviceId: string | null;
   speakerDeviceId: string | null;
+  /** Outgoing mic gain (0-2, 1 = 100%). Local input boost/cut. */
+  micLevel: number;
+  /** Incoming master playback gain (0-2, 1 = 100%). */
+  masterVolume: number;
+  /** Per-peer local playback gain (0-2). Keyed by peer userId. */
+  peerVolumes: Record<string, number>;
   theaterMode: boolean;
   inputMode: InputMode;
   pttKey: string | null;
@@ -64,6 +70,9 @@ interface AppState {
   setMicError: (msg: string | null) => void;
   setMicDeviceId: (id: string | null) => void;
   setSpeakerDeviceId: (id: string | null) => void;
+  setMicLevel: (v: number) => void;
+  setMasterVolume: (v: number) => void;
+  setPeerVolume: (peerId: string, v: number) => void;
   setTheaterMode: (v: boolean) => void;
   setInputMode: (m: InputMode) => void;
   setPttKey: (k: string | null) => void;
@@ -92,6 +101,15 @@ export const useAppStore = create<AppState>((set) => ({
     typeof window !== "undefined" ? localStorage.getItem("aocom-mic") : null,
   speakerDeviceId:
     typeof window !== "undefined" ? localStorage.getItem("aocom-speaker") : null,
+  micLevel:
+    typeof window !== "undefined"
+      ? Number(localStorage.getItem("aocom-mic-level") ?? "1")
+      : 1,
+  masterVolume:
+    typeof window !== "undefined"
+      ? Number(localStorage.getItem("aocom-master-vol") ?? "1")
+      : 1,
+  peerVolumes: {},
   theaterMode: false,
   inputMode:
     typeof window !== "undefined" &&
@@ -140,6 +158,16 @@ export const useAppStore = create<AppState>((set) => ({
     else localStorage.removeItem("aocom-speaker");
     set({ speakerDeviceId });
   },
+  setMicLevel: (micLevel) => {
+    localStorage.setItem("aocom-mic-level", String(micLevel));
+    set({ micLevel });
+  },
+  setMasterVolume: (masterVolume) => {
+    localStorage.setItem("aocom-master-vol", String(masterVolume));
+    set({ masterVolume });
+  },
+  setPeerVolume: (peerId, v) =>
+    set((s) => ({ peerVolumes: { ...s.peerVolumes, [peerId]: v } })),
   setTheaterMode: (theaterMode) => set({ theaterMode }),
   setInputMode: (inputMode) => {
     localStorage.setItem("aocom-input-mode", inputMode);

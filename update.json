@@ -1,11 +1,11 @@
 {
-  "version": "0.2.2",
-  "notes": "AOCom v0.2.2 — Ses ve UX düzeltmeleri\n• Sesli sohbet bağlantı/asimetrik ses hatası giderildi (ICE kuyruğu + perfect negotiation)\n• Konuşma göstergesi titremesi düzeltildi (yumuşatma + 300ms bekleme)\n• 'Yazıyor…' göstergesi, arkaplan bildirimleri, odaya giriş/çıkış sesi\n• Müzik: Önceki kaldırıldı, sıra sonunda Sonraki oynatıcıyı sıfırlıyor",
-  "pub_date": "2026-07-11T03:40:00Z",
+  "version": "0.2.3",
+  "notes": "AOCom v0.2.3 — Ses motoru elden geçirildi\n• Sesli sohbet susma/tek yön hatası düzeltildi (AudioContext resume awaited)\n• Konuşma göstergesi 500ms bekleme ile stabilize edildi\n• Ayarlar: Mikrofon ve Ana Ses seviyesi kaydırıcıları\n• Odada kişi kartına tıkla → kişiye özel ses (0-200%)\n• Windows bildirim düzeltmesi (AppUserModelID)",
+  "pub_date": "2026-07-11T04:15:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTZFM2dHVFdjclUvc1FWQlBHWllYUlJmL0FTMEI1b21KR0ZFVm5GSGo0WTFmcnczU1pCRC9jNlBrSXFuSktDdDhMbFJETVQwTXBuVUdSdXRlY25aOWdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNzMwMTM4CWZpbGU6QU9Db21fMC4yLjJfeDY0LXNldHVwLmV4ZQpVeWE1Q0RPTS9EZS80dXpRRzRSNkE1Qys1YVdiU09mZ0NDeWZmSWhidG5mUnpudlBkcTJxTFpvQ0E3Q3Q0dzgwRmorcjBLR0NkSjA2d1ZBNUQyR1BCZz09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.2/AOCom_0.2.2_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTFibnRnVDRxOFBNR1RQOSswR1JaNXZWRHRyTDR2U2JQNkFnUDY0cXlFMjlhWjhMVkVuazFSTi8zRmxPOU5SWGp4ZFE0YlJaZlB2emE4bFQ5b09LWmdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzNzMyMjIxCWZpbGU6QU9Db21fMC4yLjNfeDY0LXNldHVwLmV4ZQp2Snd5blpQSnFpZ09nbXNnZjI4N28yei8ySUhOaUxMelhrK3FIQXkrN2NDMWg2a3pQTWJaelU3bkxGdnZuL05pYlBFSW9qOW5XcnJTcXJibTMxei9CZz09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.3/AOCom_0.2.3_x64-setup.exe"
     }
   }
 }

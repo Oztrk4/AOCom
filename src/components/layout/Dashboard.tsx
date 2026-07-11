@@ -55,6 +55,9 @@ export function Dashboard({
   const quality = useAppStore((s) => s.quality);
   const inputMode = useAppStore((s) => s.inputMode);
   const pttActive = useAppStore((s) => s.pttActive);
+  const micLevel = useAppStore((s) => s.micLevel);
+  const masterVolume = useAppStore((s) => s.masterVolume);
+  const speakerDeviceId = useAppStore((s) => s.speakerDeviceId);
   const [voiceBanOpen, setVoiceBanOpen] = useState(false);
 
   const joinVoice = useCallback(
@@ -106,6 +109,18 @@ export function Dashboard({
       !muted && !deafened && (inputMode === "voice" || pttActive)
     );
   }, [muted, deafened, inputMode, pttActive, rtc]);
+
+  // Live audio-engine gains: outgoing mic level, incoming master (0 when
+  // deafened), and the output device sink.
+  useEffect(() => {
+    rtc.applyMicLevel(micLevel);
+  }, [micLevel, rtc]);
+  useEffect(() => {
+    rtc.applyMasterVolume(deafened ? 0 : masterVolume);
+  }, [masterVolume, deafened, rtc]);
+  useEffect(() => {
+    void rtc.applyOutputSink(speakerDeviceId);
+  }, [speakerDeviceId, rtc]);
 
   useEffect(() => {
     if (rtc.connected) void rtc.setCamera(camOn, quality);
@@ -181,6 +196,7 @@ export function Dashboard({
               leaveVoice={leaveVoice}
               startScreenShare={rtc.startScreenShare}
               stopScreenShare={rtc.stopScreenShare}
+              setPeerVolume={rtc.setPeerVolume}
             />
           ) : (
             <FriendsList

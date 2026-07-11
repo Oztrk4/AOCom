@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/stores/app-store";
-import { applySinkId } from "@/lib/media";
 import { useMusicPlayer } from "@/hooks/useMusicPlayer";
 import { MusicPanel } from "@/components/music/MusicPanel";
 import { Avatar } from "@/components/ui/Avatar";
@@ -18,6 +17,7 @@ import {
   PhoneOffIcon,
   ScreenShareIcon,
   ScreenShareOffIcon,
+  VolumeIcon,
 } from "@/components/ui/icons";
 import type { Channel, VideoQuality } from "@/lib/types";
 
@@ -26,26 +26,29 @@ function Tile({
   stream,
   isSelf,
   speaking,
-  deafened,
   fill = false,
   screen = false,
+  setPeerVolume,
 }: {
   id: string;
   stream: MediaStream | null;
   isSelf: boolean;
   speaking: boolean;
-  deafened: boolean;
   /** Theater mode: stretch to the grid cell instead of a fixed ratio. */
   fill?: boolean;
   /** Screen-share tile: fit (don't crop) + "· Ekran" label, no glow. */
   screen?: boolean;
+  /** Remote-only: adjust this peer's local playback gain (0-2). */
+  setPeerVolume?: (peerId: string, v: number) => void;
 }) {
   const profile = useAppStore((s) => s.profiles[id]);
-  const speakerDeviceId = useAppStore((s) => s.speakerDeviceId);
+  const peerVol = useAppStore((s) => s.peerVolumes[id] ?? 1);
+  const setStorePeerVolume = useAppStore((s) => s.setPeerVolume);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [volOpen, setVolOpen] = useState(false);
 
-  // Pre-negotiated transceivers mean a remote camera-off arrives as a
-  // muted (frameless) track, not a removed one — treat muted as "no video".
+  const canAdjust = !isSelf && !screen && !!setPeerVolume;
+
   const hasVideo =
     stream?.getVideoTracks().some((t) => t.readyState === "live" && !t.muted) ??
     false;
@@ -55,23 +58,18 @@ function Tile({
     if (el && stream && el.srcObject !== stream) el.srcObject = stream;
   }, [stream]);
 
-  // Dynamic audio output routing — follows the Settings speaker choice live.
-  useEffect(() => {
-    if (videoRef.current) void applySinkId(videoRef.current, speakerDeviceId);
-  }, [speakerDeviceId]);
-
   return (
     <div
       className={`relative overflow-hidden rounded-xl border bg-bg-2 ${
         fill ? "h-full min-h-[180px]" : "aspect-video"
       } ${screen ? "border-accent/60" : "border-edge"} ${speaking ? "speaking" : ""}`}
     >
-      {/* The <video> element also carries the audio of audio-only peers. */}
+      {/* Audio flows through the Web Audio engine, so the element is muted. */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        muted={isSelf || deafened}
+        muted
         className={
           hasVideo
             ? `h-full w-full ${screen ? "bg-black object-contain" : "object-cover"}`
@@ -88,12 +86,42 @@ function Tile({
           />
         </div>
       )}
-      <span className="absolute bottom-1.5 left-2 rounded bg-bg-0/70 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur">
+      <button
+        onClick={() => canAdjust && setVolOpen((o) => !o)}
+        className={`absolute bottom-1.5 left-2 rounded bg-bg-0/70 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur ${
+          canAdjust ? "cursor-pointer hover:bg-bg-0/90" : "cursor-default"
+        }`}
+        title={canAdjust ? "Ses seviyesini ayarla" : undefined}
+      >
         {screen && "🖥️ "}
         {profile?.nickname ?? "…"}
         {isSelf && " (you)"}
         {screen && " · Ekran"}
-      </span>
+        {canAdjust && peerVol !== 1 && (
+          <span className="ml-1 text-accent">{Math.round(peerVol * 100)}%</span>
+        )}
+      </button>
+      {/* Inline per-user volume slider (local only, 0-200%) */}
+      {canAdjust && volOpen && (
+        <div className="absolute bottom-7 left-2 right-2 flex items-center gap-2 rounded-lg bg-bg-0/85 px-2 py-1.5 backdrop-blur">
+          <VolumeIcon width={12} height={12} className="text-text-1" />
+          <input
+            type="range"
+            min={0}
+            max={200}
+            value={Math.round(peerVol * 100)}
+            onChange={(e) => {
+              const v = Number(e.target.value) / 100;
+              setStorePeerVolume(id, v);
+              setPeerVolume?.(id, v);
+            }}
+            className="h-1 flex-1 accent-[var(--accent)]"
+          />
+          <span className="w-8 text-right text-[9px] tabular-nums text-text-1">
+            {Math.round(peerVol * 100)}%
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -110,6 +138,7 @@ export function VoiceGrid({
   leaveVoice,
   startScreenShare,
   stopScreenShare,
+  setPeerVolume,
 }: {
   userId: string;
   channel: Channel;
@@ -122,6 +151,7 @@ export function VoiceGrid({
   leaveVoice: () => Promise<void>;
   startScreenShare: () => Promise<void>;
   stopScreenShare: () => Promise<void>;
+  setPeerVolume: (peerId: string, v: number) => void;
 }) {
   const {
     muted,
@@ -211,7 +241,6 @@ export function VoiceGrid({
           stream={localStream}
           isSelf
           speaking={selfSpeaking}
-          deafened={deafened}
           fill={theaterMode}
         />
         {Object.entries(remoteStreams).map(([peerId, stream]) => (
@@ -221,8 +250,8 @@ export function VoiceGrid({
             stream={stream}
             isSelf={false}
             speaking={speakingIds.has(peerId)}
-            deafened={deafened}
             fill={theaterMode}
+            setPeerVolume={setPeerVolume}
           />
         ))}
         {/* Screen-share tiles (local + remote), shown while sharing */}
@@ -233,7 +262,6 @@ export function VoiceGrid({
             stream={localScreen}
             isSelf
             speaking={false}
-            deafened={deafened}
             fill={theaterMode}
             screen
           />
@@ -245,7 +273,6 @@ export function VoiceGrid({
             stream={stream}
             isSelf={false}
             speaking={false}
-            deafened={deafened}
             fill={theaterMode}
             screen
           />

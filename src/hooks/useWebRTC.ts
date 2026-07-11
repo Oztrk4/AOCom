@@ -6,22 +6,20 @@ import { isMicLive, useAppStore } from "@/stores/app-store";
 import { QUALITY_PRESETS, type VideoQuality } from "@/lib/types";
 import {
   MIC_CONSTRAINTS,
+  createMicPipeline,
   describeMediaError,
-  processMicStream,
-  type ProcessedMic,
+  type MicPipeline,
 } from "@/lib/media";
 
 /**
- * Full-mesh P2P WebRTC. Media never touches a server: Supabase Realtime
- * broadcast is used only for lightweight SDP/ICE signaling (free tier),
- * then audio/video flows directly between peers via STUN-discovered routes.
+ * Full-mesh P2P WebRTC with a Web Audio engine for send + receive.
  *
- * Glare is resolved with the "perfect negotiation" pattern; politeness is
- * derived deterministically from user-id ordering so both sides agree.
- *
- * Camera latency: every peer connection pre-negotiates a video transceiver
- * at setup time, so toggling the webcam is a pure `replaceTrack()` — no
- * SDP renegotiation, no signaling round-trip, instant on/off.
+ * Send: raw mic → GainNode (mic level) → MediaStreamDestination → peers.
+ * The AudioContext is explicitly RESUMED and awaited before the outgoing
+ * track is trusted (a suspended context emits silence — the v0.2.2 mute
+ * regression). Receive: each peer → per-peer GainNode → master GainNode →
+ * one <audio> sink (output-device routable). Per-user/master volume and
+ * deafen are all local gain changes.
  */
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
@@ -29,40 +27,45 @@ const RTC_CONFIG: RTCConfiguration = {
   ],
 };
 
+const log = (...a: unknown[]) => console.log("[aocom-voice]", ...a);
+
 type Signal =
   | { kind: "sdp"; description: RTCSessionDescriptionInit }
   | { kind: "ice"; candidate: RTCIceCandidateInit };
+
+interface RemoteAudio {
+  source: MediaStreamAudioSourceNode;
+  gain: GainNode;
+  analyser: AnalyserNode;
+}
 
 interface Peer {
   pc: RTCPeerConnection;
   polite: boolean;
   makingOffer: boolean;
   ignoreOffer: boolean;
-  /** Composite stream (mic audio + camera video) assembled from ontrack. */
   stream: MediaStream | null;
-  /** Screen-share video track from this peer, kept as its own stream. */
   screenStream: MediaStream | null;
-  /** Pre-negotiated camera transceiver — camera toggles via replaceTrack. */
   camTransceiver: RTCRtpTransceiver | null;
-  /** Pre-negotiated screen transceiver — screen share via replaceTrack. */
   screenTransceiver: RTCRtpTransceiver | null;
-  /** ICE candidates that arrived before the remote description was set. */
   pendingCandidates: RTCIceCandidateInit[];
+  audio: RemoteAudio | null;
 }
 
 export function useWebRTC(userId: string | null) {
   const peersRef = useRef<Map<string, Peer>>(new Map());
   const sigRef = useRef<RealtimeChannel | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  /** Raw hardware capture — kept only to release the device on teardown. */
   const rawMicRef = useRef<MediaStream | null>(null);
-  /** Web Audio voice-optimization graph feeding the outgoing track. */
-  const micGraphRef = useRef<ProcessedMic | null>(null);
+  const micPipeRef = useRef<MicPipeline | null>(null);
   const camTrackRef = useRef<MediaStreamTrack | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analysersRef = useRef<Map<string, AnalyserNode>>(new Map());
   const speakTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Receive engine.
+  const masterGainRef = useRef<GainNode | null>(null);
+  const outputElRef = useRef<HTMLAudioElement | null>(null);
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
@@ -79,13 +82,10 @@ export function useWebRTC(userId: string | null) {
       return next;
     });
   }, []);
-
-  /** Refresh the local stream state so self-tile UI re-renders instantly. */
   const bumpLocal = useCallback(() => {
     const local = localStreamRef.current;
     setLocalStream(local ? new MediaStream(local.getTracks()) : null);
   }, []);
-
   const bumpScreen = useCallback((peerId: string, stream: MediaStream | null) => {
     setRemoteScreens((prev) => {
       const next = { ...prev };
@@ -106,19 +106,65 @@ export function useWebRTC(userId: string | null) {
     [userId]
   );
 
-  const attachAnalyser = useCallback((id: string, stream: MediaStream) => {
-    if (!stream.getAudioTracks().length) return;
+  /* ── Audio engine ─────────────────────────────────────────────────── */
+  const ensureCtx = useCallback(async (): Promise<AudioContext> => {
     if (!audioCtxRef.current)
       audioCtxRef.current = new AudioContext({ latencyHint: "interactive" });
     const ctx = audioCtxRef.current;
-    void ctx.resume();
-    analysersRef.current.get(id)?.disconnect();
-    const src = ctx.createMediaStreamSource(stream);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 512;
-    src.connect(analyser);
-    analysersRef.current.set(id, analyser);
+    if (ctx.state !== "running") {
+      await ctx.resume().catch(() => {});
+      log("AudioContext state after resume:", ctx.state);
+    }
+    return ctx;
   }, []);
+
+  const ensureOutput = useCallback(async (): Promise<GainNode> => {
+    const ctx = await ensureCtx();
+    if (masterGainRef.current) return masterGainRef.current;
+    const master = ctx.createGain();
+    const st = useAppStore.getState();
+    master.gain.value = st.deafened ? 0 : st.masterVolume;
+    const dest = ctx.createMediaStreamDestination();
+    master.connect(dest);
+    const el = document.createElement("audio");
+    el.autoplay = true;
+    el.srcObject = dest.stream;
+    (el as HTMLAudioElement).style.display = "none";
+    document.body.appendChild(el);
+    void el.play().catch((e) => log("output <audio> play() blocked:", e));
+    const sink = st.speakerDeviceId;
+    if (sink) {
+      const s = el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> };
+      await s.setSinkId?.(sink).catch(() => {});
+    }
+    masterGainRef.current = master;
+    outputElRef.current = el;
+    return master;
+  }, [ensureCtx]);
+
+  const addRemoteAudio = useCallback(
+    async (peerId: string, track: MediaStreamTrack) => {
+      const ctx = await ensureCtx();
+      const master = await ensureOutput();
+      const peer = peersRef.current.get(peerId);
+      if (!peer) return;
+      // Tear down any previous audio graph for this peer.
+      peer.audio?.source.disconnect();
+      peer.audio?.gain.disconnect();
+      const source = ctx.createMediaStreamSource(new MediaStream([track]));
+      const gain = ctx.createGain();
+      gain.gain.value = useAppStore.getState().peerVolumes[peerId] ?? 1;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      source.connect(gain);
+      gain.connect(master);
+      gain.connect(analyser);
+      peer.audio = { source, gain, analyser };
+      analysersRef.current.set(peerId, analyser);
+      log(peerId, "remote audio wired; track", track.readyState, "muted", track.muted);
+    },
+    [ensureCtx, ensureOutput]
+  );
 
   const closePeer = useCallback(
     (peerId: string) => {
@@ -128,11 +174,13 @@ export function useWebRTC(userId: string | null) {
       peer.pc.onicecandidate = null;
       peer.pc.ontrack = null;
       peer.pc.close();
+      peer.audio?.source.disconnect();
+      peer.audio?.gain.disconnect();
       peersRef.current.delete(peerId);
-      analysersRef.current.get(peerId)?.disconnect();
       analysersRef.current.delete(peerId);
       bumpRemote(peerId, null);
       bumpScreen(peerId, null);
+      log(peerId, "peer closed");
     },
     [bumpRemote, bumpScreen]
   );
@@ -144,9 +192,7 @@ export function useWebRTC(userId: string | null) {
       const pc = new RTCPeerConnection(RTC_CONFIG);
       const peer: Peer = {
         pc,
-        // Deterministic politeness from sorted UIDs: the peer with the
-        // lexicographically larger id is polite (yields on glare).
-        polite: userId > peerId,
+        polite: userId > peerId, // deterministic from sorted UIDs
         makingOffer: false,
         ignoreOffer: false,
         stream: null,
@@ -154,29 +200,27 @@ export function useWebRTC(userId: string | null) {
         camTransceiver: null,
         screenTransceiver: null,
         pendingCandidates: [],
+        audio: null,
       };
       peersRef.current.set(peerId, peer);
+      log(peerId, "createPeer polite=", peer.polite);
 
+      // Bind the outgoing audio track BEFORE any offer/answer.
       const local = localStreamRef.current;
-      if (local)
-        for (const track of local.getAudioTracks()) {
-          const sender = pc.addTrack(track, local);
-          // Priority queue for voice: high bandwidth allocation + DSCP
-          // network marking so audio packets outrank everything else
-          // the connection carries, keeping jitter flat under load.
-          const params = sender.getParameters();
-          if (params.encodings.length) {
-            params.encodings[0].priority = "high";
-            params.encodings[0].networkPriority = "high";
-            void sender.setParameters(params).catch(() => {});
-          }
+      const audioTrack = local?.getAudioTracks()[0];
+      if (audioTrack) {
+        const sender = pc.addTrack(audioTrack, local!);
+        const params = sender.getParameters();
+        if (params.encodings.length) {
+          params.encodings[0].priority = "high";
+          params.encodings[0].networkPriority = "high";
+          void sender.setParameters(params).catch(() => {});
         }
+        log(peerId, "added local audio track", audioTrack.readyState);
+      } else {
+        log(peerId, "WARNING: no local audio track at createPeer");
+      }
 
-      // Reserve TWO video m-lines up front, in a fixed order: [camera,
-      // screen]. From here on camera and screen toggles are pure
-      // replaceTrack() — never a renegotiation. The creation order is
-      // identical on both peers, so the transceiver refs line up and the
-      // receiver can tell camera video from screen video.
       const camTransceiver = pc.addTransceiver("video", { direction: "sendrecv" });
       const screenTransceiver = pc.addTransceiver("video", { direction: "sendrecv" });
       peer.camTransceiver = camTransceiver;
@@ -193,7 +237,7 @@ export function useWebRTC(userId: string | null) {
           if (pc.localDescription)
             sendSignal(peerId, { kind: "sdp", description: pc.localDescription });
         } catch (err) {
-          console.error("negotiation failed", err);
+          console.error("[aocom-voice] negotiation failed", peerId, err);
         } finally {
           peer.makingOffer = false;
         }
@@ -204,10 +248,27 @@ export function useWebRTC(userId: string | null) {
           sendSignal(peerId, { kind: "ice", candidate: e.candidate.toJSON() });
       };
 
+      pc.oniceconnectionstatechange = () =>
+        log(peerId, "ice=", pc.iceConnectionState);
+      pc.onsignalingstatechange = () => log(peerId, "sig=", pc.signalingState);
+      pc.onconnectionstatechange = () => {
+        const st = pc.connectionState;
+        log(peerId, "pc=", st);
+        if (st === "failed") {
+          log(peerId, "connection failed → restartIce");
+          pc.restartIce();
+        } else if (st === "disconnected") {
+          // Give ICE a moment to self-heal; renegotiate if it doesn't.
+          setTimeout(() => {
+            if (pc.connectionState === "disconnected") {
+              log(peerId, "still disconnected → restartIce");
+              pc.restartIce();
+            }
+          }, 2500);
+        }
+      };
+
       pc.ontrack = (e) => {
-        // Screen-share video rides its own transceiver → its own stream,
-        // shown as a separate tile. Gated on mute so it appears only while
-        // the peer is actually sharing.
         if (e.track.kind === "video" && e.transceiver === peer.screenTransceiver) {
           const scr = new MediaStream([e.track]);
           peer.screenStream = scr;
@@ -220,28 +281,25 @@ export function useWebRTC(userId: string | null) {
           return;
         }
 
-        // Everything else (mic audio + camera video) → the composite tile.
         if (!peer.stream) peer.stream = new MediaStream();
-        if (!peer.stream.getTracks().includes(e.track))
-          peer.stream.addTrack(e.track);
+        if (!peer.stream.getTracks().includes(e.track)) peer.stream.addTrack(e.track);
         const stream = peer.stream;
-        // A remote camera-off is a muted (frameless) video track, not a
-        // removed one — re-render the tile on both transitions.
-        e.track.onmute = () => bumpRemote(peerId, stream);
-        e.track.onunmute = () => bumpRemote(peerId, stream);
-        bumpRemote(peerId, stream);
-        if (e.track.kind === "audio") attachAnalyser(peerId, stream);
-      };
 
-      pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "failed") {
-          pc.restartIce();
+        if (e.track.kind === "audio") {
+          // Route remote audio through the Web Audio engine (per-peer gain).
+          void addRemoteAudio(peerId, e.track);
+          e.track.onended = () => log(peerId, "remote audio track ended");
+        } else {
+          // camera video
+          e.track.onmute = () => bumpRemote(peerId, stream);
+          e.track.onunmute = () => bumpRemote(peerId, stream);
         }
+        bumpRemote(peerId, stream);
       };
 
       return peer;
     },
-    [userId, sendSignal, bumpRemote, bumpScreen, attachAnalyser]
+    [userId, sendSignal, bumpRemote, bumpScreen, addRemoteAudio]
   );
 
   const handleSignal = useCallback(
@@ -260,12 +318,11 @@ export function useWebRTC(userId: string | null) {
             desc.type === "offer" &&
             (peer.makingOffer || pc.signalingState !== "stable");
           peer.ignoreOffer = !peer.polite && offerCollision;
-          if (peer.ignoreOffer) return;
-
-          await pc.setRemoteDescription(desc); // rolls back our offer if polite
-          // Remote description is now set → drain any candidates that
-          // arrived before it (the core fix for the "can't hear until
-          // restart" race: candidates were being dropped).
+          if (peer.ignoreOffer) {
+            log(peerId, "ignoring colliding offer (impolite)");
+            return;
+          }
+          await pc.setRemoteDescription(desc);
           for (const cand of peer.pendingCandidates.splice(0)) {
             await pc.addIceCandidate(cand).catch(() => {});
           }
@@ -275,8 +332,6 @@ export function useWebRTC(userId: string | null) {
               sendSignal(peerId, { kind: "sdp", description: pc.localDescription });
           }
         } else if (payload.kind === "ice") {
-          // Queue candidates until the remote description exists, otherwise
-          // addIceCandidate throws and the candidate is lost.
           if (!pc.remoteDescription || !pc.remoteDescription.type) {
             peer.pendingCandidates.push(payload.candidate);
           } else {
@@ -288,66 +343,66 @@ export function useWebRTC(userId: string | null) {
           }
         }
       } catch (err) {
-        console.error("signal handling failed", err);
+        console.error("[aocom-voice] signal handling failed", peerId, err);
       }
     },
     [userId, createPeer, sendSignal]
   );
 
-  /** Join a voice channel: capture mic, open signaling, mesh with peers. */
+  /* ── Join / leave ─────────────────────────────────────────────────── */
+  const buildMicPipeline = useCallback(
+    async (deviceId: string | null): Promise<MediaStreamTrack | null> => {
+      const raw = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          ...MIC_CONSTRAINTS,
+          ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
+        },
+      });
+      const ctx = await ensureCtx(); // resumed + verified running
+      const pipe = createMicPipeline(ctx, raw, useAppStore.getState().micLevel);
+      rawMicRef.current = raw;
+      micPipeRef.current = pipe;
+      const track = pipe.stream.getAudioTracks()[0];
+      track.contentHint = "speech";
+      analysersRef.current.set(userId!, pipe.analyser);
+      log("mic pipeline ready; ctx=", ctx.state, "track=", track.readyState);
+      // Recover if the hardware device drops (unplug / device change).
+      raw.getAudioTracks()[0].onended = () => {
+        log("raw mic ended → recapturing");
+        void setMicDevice(useAppStore.getState().micDeviceId);
+      };
+      return track;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [ensureCtx, userId]
+  );
+
   const join = useCallback(
     async (channelId: string): Promise<boolean> => {
       if (!userId) return false;
-
-      const preferredMic = useAppStore.getState().micDeviceId;
-      let raw: MediaStream;
+      let micTrack: MediaStreamTrack | null;
       try {
-        raw = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            ...MIC_CONSTRAINTS,
-            ...(preferredMic ? { deviceId: { ideal: preferredMic } } : {}),
-          },
-        });
-        useAppStore.getState().setMicError(null);
+        micTrack = await buildMicPipeline(useAppStore.getState().micDeviceId);
       } catch (err) {
         useAppStore.getState().setMicError(describeMediaError(err));
+        log("getUserMedia failed", err);
         return false;
       }
+      if (!micTrack) return false;
+      useAppStore.getState().setMicError(null);
 
-      // Peers receive the filtered/compressed track, never the raw one.
-      // latencyHint "interactive" pins the smallest stable buffer size,
-      // and the Web Audio rendering thread runs at realtime OS priority.
-      if (!audioCtxRef.current)
-        audioCtxRef.current = new AudioContext({ latencyHint: "interactive" });
-      void audioCtxRef.current.resume();
-      const graph = processMicStream(audioCtxRef.current, raw);
-      rawMicRef.current = raw;
-      micGraphRef.current = graph;
-      const mic = new MediaStream(graph.stream.getAudioTracks());
-      mic.getAudioTracks().forEach((t) => (t.contentHint = "speech"));
+      const mic = new MediaStream([micTrack]);
+      mic.getAudioTracks().forEach((t) => (t.enabled = isMicLive(useAppStore.getState())));
       localStreamRef.current = mic;
       setLocalStream(mic);
-      attachAnalyser(userId, mic);
-      // PTT mode: joins hard-muted until the key is pressed.
-      mic.getAudioTracks().forEach(
-        (t) => (t.enabled = isMicLive(useAppStore.getState()))
-      );
+      await ensureOutput(); // prime the receive graph before peers connect
 
       const sig = supabase.channel(`voice:${channelId}`, {
-        config: {
-          // Private → gated by realtime.messages RLS (active members only),
-          // so peer IPs in ICE candidates can't be harvested by outsiders.
-          private: true,
-          presence: { key: userId },
-          broadcast: { self: false },
-        },
+        config: { private: true, presence: { key: userId }, broadcast: { self: false } },
       });
       sigRef.current = sig;
-
       sig
-        .on("broadcast", { event: "signal" }, ({ payload }) =>
-          handleSignal(payload)
-        )
+        .on("broadcast", { event: "signal" }, ({ payload }) => handleSignal(payload))
         .on("presence", { event: "sync" }, () => {
           const ids = Object.keys(sig.presenceState()).filter((k) => k !== userId);
           for (const id of ids) createPeer(id);
@@ -367,13 +422,13 @@ export function useWebRTC(userId: string | null) {
           }
         });
 
-      // Active-speaker detection with EMA smoothing + a 300ms hang time so
-      // continuous speech never flickers the glow on micro volume dips.
-      const buf = new Uint8Array(256);
-      const ema = new Map<string, number>(); // smoothed RMS per id
-      const lastActive = new Map<string, number>(); // last time above threshold
+      // Speaking detection: 50ms poll, EMA smoothing, 500ms hangover. Once
+      // energy crosses the floor, the glow stays true for ≥500ms.
+      const buf = new Uint8Array(1024);
+      const ema = new Map<string, number>();
+      const lastActive = new Map<string, number>();
       const THRESHOLD = 6;
-      const HANG_MS = 300;
+      const HANG_MS = 500;
       speakTimerRef.current = setInterval(() => {
         const t = Date.now();
         for (const [id, analyser] of analysersRef.current) {
@@ -381,43 +436,46 @@ export function useWebRTC(userId: string | null) {
           let sum = 0;
           for (const v of buf) sum += (v - 128) * (v - 128);
           const rms = Math.sqrt(sum / buf.length);
-          const smoothed = (ema.get(id) ?? 0) * 0.6 + rms * 0.4;
+          const smoothed = (ema.get(id) ?? 0) * 0.7 + rms * 0.3;
           ema.set(id, smoothed);
           if (smoothed > THRESHOLD) lastActive.set(id, t);
         }
         const now = new Set<string>();
-        for (const [id, ts] of lastActive) {
+        for (const [id, ts] of lastActive)
           if (t - ts < HANG_MS && analysersRef.current.has(id)) now.add(id);
-        }
-        setSpeakingIds((prev) => {
-          if (prev.size === now.size && [...prev].every((x) => now.has(x)))
-            return prev;
-          return now;
-        });
-      }, 100);
+        setSpeakingIds((prev) =>
+          prev.size === now.size && [...prev].every((x) => now.has(x)) ? prev : now
+        );
+      }, 50);
 
       return true;
     },
-    [userId, attachAnalyser, handleSignal, createPeer, closePeer]
+    [userId, buildMicPipeline, ensureOutput, handleSignal, createPeer, closePeer]
   );
 
-  /** Leave the voice channel and tear everything down. */
   const leave = useCallback(async () => {
     if (speakTimerRef.current) clearInterval(speakTimerRef.current);
     speakTimerRef.current = null;
-
     for (const id of [...peersRef.current.keys()]) closePeer(id);
 
     camTrackRef.current?.stop();
     camTrackRef.current = null;
     screenTrackRef.current?.stop();
     screenTrackRef.current = null;
-    localStreamRef.current?.getTracks().forEach((t) => t.stop());
-    localStreamRef.current = null;
-    micGraphRef.current?.disconnect();
-    micGraphRef.current = null;
+    micPipeRef.current?.disconnect();
+    micPipeRef.current = null;
     rawMicRef.current?.getTracks().forEach((t) => t.stop());
     rawMicRef.current = null;
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    localStreamRef.current = null;
+    masterGainRef.current?.disconnect();
+    masterGainRef.current = null;
+    if (outputElRef.current) {
+      outputElRef.current.srcObject = null;
+      outputElRef.current.remove();
+      outputElRef.current = null;
+    }
+    analysersRef.current.clear();
     setLocalStream(null);
     setRemoteStreams({});
     setLocalScreen(null);
@@ -429,9 +487,6 @@ export function useWebRTC(userId: string | null) {
       await supabase.removeChannel(sigRef.current);
       sigRef.current = null;
     }
-    analysersRef.current.forEach((a) => a.disconnect());
-    analysersRef.current.clear();
-
     if (userId) {
       await supabase.from("active_status").upsert({
         user_id: userId,
@@ -442,16 +497,11 @@ export function useWebRTC(userId: string | null) {
     }
   }, [userId, closePeer]);
 
-  /**
-   * Instant camera toggle: the video m-line was negotiated at connection
-   * time, so this is capture + replaceTrack fan-out (or replaceTrack(null)
-   * + hard stop). No renegotiation, no signaling, no dropdown required.
-   */
+  /* ── Camera / screen (unchanged behavior) ─────────────────────────── */
   const setCamera = useCallback(
     async (on: boolean, quality: VideoQuality) => {
       const local = localStreamRef.current;
       if (!local) return;
-
       if (on && !camTrackRef.current) {
         const preset = QUALITY_PRESETS[quality];
         let cam: MediaStream;
@@ -491,11 +541,6 @@ export function useWebRTC(userId: string | null) {
     [bumpLocal]
   );
 
-  /**
-   * Screen share via the pre-negotiated screen transceiver → pure
-   * replaceTrack fan-out, no renegotiation. Camera and mic are untouched,
-   * so you can screen-share with your webcam on and voice flowing.
-   */
   const stopScreenShare = useCallback(async () => {
     const track = screenTrackRef.current;
     if (!track) return;
@@ -513,23 +558,15 @@ export function useWebRTC(userId: string | null) {
     if (screenTrackRef.current) return;
     let display: MediaStream;
     try {
-      display = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true,
-      });
+      display = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
     } catch {
-      return; // user cancelled the OS picker — no-op
+      return;
     }
     const track = display.getVideoTracks()[0];
     if (!track) return;
     track.contentHint = "detail";
-    // Screen/system audio is intentionally NOT piped to peers: doing so
-    // would route it through the voice DSP + mute/PTT gate. Release it so
-    // no capture lingers. (Audio-share can be added later as its own track.)
     display.getAudioTracks().forEach((t) => t.stop());
-
     screenTrackRef.current = track;
-    // OS "Stop sharing" bar → tear down cleanly.
     track.onended = () => void stopScreenShare();
     setLocalScreen(new MediaStream([track]));
     await Promise.all(
@@ -539,11 +576,6 @@ export function useWebRTC(userId: string | null) {
     );
   }, [stopScreenShare]);
 
-  /**
-   * Live quality switch (360p/480p/720p) via applyConstraints on the
-   * running track — the encoder rescales in place, the pipeline never
-   * stops, and peers see a smooth resolution change.
-   */
   const applyQuality = useCallback(async (quality: VideoQuality) => {
     const track = camTrackRef.current;
     if (!track) return;
@@ -554,68 +586,71 @@ export function useWebRTC(userId: string | null) {
         height: { ideal: preset.height },
         frameRate: { ideal: preset.frameRate },
       });
-    } catch {
-      /* device can't do this mode — keep streaming at current settings */
-    }
+    } catch {}
   }, []);
 
-  /**
-   * Hot-swap the microphone without leaving the call: capture the new
-   * device, replaceTrack on every peer's audio sender, retire the old
-   * track. Peers notice nothing but the new voice.
-   */
   const setMicDevice = useCallback(
     async (deviceId: string | null) => {
       const local = localStreamRef.current;
       if (!local || !userId) return;
       try {
         const freshRaw = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            ...MIC_CONSTRAINTS,
-            ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-          },
+          audio: { ...MIC_CONSTRAINTS, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) },
         });
-        if (!audioCtxRef.current)
-          audioCtxRef.current = new AudioContext({ latencyHint: "interactive" });
-        const graph = processMicStream(audioCtxRef.current, freshRaw);
-        const newTrack = graph.stream.getAudioTracks()[0];
+        const ctx = await ensureCtx();
+        const pipe = createMicPipeline(ctx, freshRaw, useAppStore.getState().micLevel);
+        const newTrack = pipe.stream.getAudioTracks()[0];
         newTrack.contentHint = "speech";
         newTrack.enabled = isMicLive(useAppStore.getState());
-
         await Promise.all(
           [...peersRef.current.values()].map((p) => {
-            const sender = p.pc
-              .getSenders()
-              .find((s) => s.track?.kind === "audio");
+            const sender = p.pc.getSenders().find((s) => s.track?.kind === "audio");
             return sender ? sender.replaceTrack(newTrack) : Promise.resolve();
           })
         );
-
         const oldTrack = local.getAudioTracks()[0];
         if (oldTrack) {
           local.removeTrack(oldTrack);
           oldTrack.stop();
         }
         local.addTrack(newTrack);
-        // Retire the previous graph + hardware capture completely.
-        micGraphRef.current?.disconnect();
+        micPipeRef.current?.disconnect();
         rawMicRef.current?.getTracks().forEach((t) => t.stop());
-        micGraphRef.current = graph;
+        micPipeRef.current = pipe;
         rawMicRef.current = freshRaw;
-        attachAnalyser(userId, new MediaStream([newTrack]));
+        analysersRef.current.set(userId, pipe.analyser);
+        freshRaw.getAudioTracks()[0].onended = () =>
+          void setMicDevice(useAppStore.getState().micDeviceId);
         bumpLocal();
       } catch (err) {
         useAppStore.getState().setMicError(describeMediaError(err));
       }
     },
-    [userId, attachAnalyser, bumpLocal]
+    [userId, ensureCtx, bumpLocal]
   );
 
   const setMicEnabled = useCallback((enabled: boolean) => {
     localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = enabled));
   }, []);
 
-  // Full teardown if the component unmounts mid-call.
+  /* ── Volume controls (all local) ──────────────────────────────────── */
+  const applyMicLevel = useCallback((v: number) => {
+    if (micPipeRef.current) micPipeRef.current.gain.gain.value = v;
+  }, []);
+  const applyMasterVolume = useCallback((v: number) => {
+    if (masterGainRef.current) masterGainRef.current.gain.value = v;
+  }, []);
+  const setPeerVolume = useCallback((peerId: string, v: number) => {
+    const g = peersRef.current.get(peerId)?.audio?.gain;
+    if (g) g.gain.value = v;
+  }, []);
+  const applyOutputSink = useCallback(async (deviceId: string | null) => {
+    const el = outputElRef.current as
+      | (HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> })
+      | null;
+    if (el && deviceId) await el.setSinkId?.(deviceId).catch(() => {});
+  }, []);
+
   useEffect(() => () => void leave(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
@@ -627,6 +662,10 @@ export function useWebRTC(userId: string | null) {
     setMicEnabled,
     startScreenShare,
     stopScreenShare,
+    applyMicLevel,
+    applyMasterVolume,
+    setPeerVolume,
+    applyOutputSink,
     localStream,
     remoteStreams,
     localScreen,

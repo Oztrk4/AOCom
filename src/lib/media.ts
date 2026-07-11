@@ -13,6 +13,51 @@ export const MIC_CONSTRAINTS: MediaTrackConstraints = {
   autoGainControl: false,
 };
 
+export interface MicPipeline {
+  /** Track sent to peers (output of the gain node). */
+  stream: MediaStream;
+  /** Adjustable outgoing level (0-2). */
+  gain: GainNode;
+  /** Analyser tapped post-gain for the speaking indicator. */
+  analyser: AnalyserNode;
+  disconnect: () => void;
+}
+
+/**
+ * Minimal, robust mic pipeline for WebRTC: source → gain → destination.
+ * Deliberately simple (no biquad/compressor stack) so the outgoing track
+ * transmits reliably; echo-cancellation / noise-suppression stay on at the
+ * hardware constraint level. The gain node powers the mic-level slider.
+ * The caller MUST `await ctx.resume()` before trusting the output track,
+ * otherwise a suspended context emits pure silence to peers.
+ */
+export function createMicPipeline(
+  ctx: AudioContext,
+  raw: MediaStream,
+  gainValue = 1
+): MicPipeline {
+  const source = ctx.createMediaStreamSource(raw);
+  const gain = ctx.createGain();
+  gain.gain.value = gainValue;
+  const dest = ctx.createMediaStreamDestination();
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 1024;
+  source.connect(gain);
+  gain.connect(dest);
+  gain.connect(analyser); // analyser is a passthrough tap (no onward output)
+  return {
+    stream: dest.stream,
+    gain,
+    analyser,
+    disconnect: () => {
+      try {
+        source.disconnect();
+        gain.disconnect();
+      } catch {}
+    },
+  };
+}
+
 /**
  * Voice optimization chain: high-pass kills desk rumble and mic thumps,
  * low-pass shaves the sharp broadband edge of keyboard/mouse clicks

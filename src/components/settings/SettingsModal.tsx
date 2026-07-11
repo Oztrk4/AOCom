@@ -42,6 +42,10 @@ export function SettingsModal({
     setProfile,
     setMicDeviceId,
     setSpeakerDeviceId,
+    micLevel,
+    masterVolume,
+    setMicLevel,
+    setMasterVolume,
   } = useAppStore();
 
   const [nickname, setNickname] = useState(profile?.nickname ?? "");
@@ -250,6 +254,42 @@ export function SettingsModal({
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* Global level sliders (live) */}
+          <div className="space-y-2">
+            <div>
+              <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-text-1">
+                <span>Mikrofon Seviyesi (giden)</span>
+                <span className="tabular-nums text-text-0">
+                  {Math.round(micLevel * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={200}
+                value={Math.round(micLevel * 100)}
+                onChange={(e) => setMicLevel(Number(e.target.value) / 100)}
+                className="h-1.5 w-full accent-[var(--accent)]"
+              />
+            </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-text-1">
+                <span>Ana Ses Seviyesi (gelen)</span>
+                <span className="tabular-nums text-text-0">
+                  {Math.round(masterVolume * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={200}
+                value={Math.round(masterVolume * 100)}
+                onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
+                className="h-1.5 w-full accent-[var(--accent)]"
+              />
             </div>
           </div>
 
