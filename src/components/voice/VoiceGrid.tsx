@@ -11,8 +11,10 @@ import {
   ExpandIcon,
   HeadphonesIcon,
   HeadphonesOffIcon,
+  MaximizeIcon,
   MicIcon,
   MicOffIcon,
+  MinimizeIcon,
   MusicIcon,
   PhoneOffIcon,
   ScreenShareIcon,
@@ -29,6 +31,8 @@ function Tile({
   fill = false,
   screen = false,
   setPeerVolume,
+  onMaximize,
+  maximized = false,
 }: {
   id: string;
   stream: MediaStream | null;
@@ -38,8 +42,11 @@ function Tile({
   fill?: boolean;
   /** Screen-share tile: fit (don't crop) + "· Ekran" label, no glow. */
   screen?: boolean;
-  /** Remote-only: adjust this peer's local playback gain (0-2). */
+  /** Remote-only: adjust this peer's local playback gain (0-4). */
   setPeerVolume?: (peerId: string, v: number) => void;
+  /** Screen-only: toggle the synced full-column maximize overlay. */
+  onMaximize?: () => void;
+  maximized?: boolean;
 }) {
   const profile = useAppStore((s) => s.profiles[id]);
   const peerVol = useAppStore((s) => s.peerVolumes[id] ?? 1);
@@ -86,6 +93,21 @@ function Tile({
           />
         </div>
       )}
+      {/* Screen-tile maximize (synced to all watchers) */}
+      {screen && onMaximize && (
+        <button
+          onClick={onMaximize}
+          className="absolute right-1.5 top-1.5 rounded-md bg-bg-0/70 p-1 text-text-0 backdrop-blur transition-colors hover:bg-accent hover:text-bg-0"
+          title={maximized ? "Küçült" : "Büyüt"}
+          aria-label={maximized ? "Küçült" : "Büyüt"}
+        >
+          {maximized ? (
+            <MinimizeIcon width={13} height={13} />
+          ) : (
+            <MaximizeIcon width={13} height={13} />
+          )}
+        </button>
+      )}
       <button
         onClick={() => canAdjust && setVolOpen((o) => !o)}
         className={`absolute bottom-1.5 left-2 rounded bg-bg-0/70 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur ${
@@ -108,7 +130,7 @@ function Tile({
           <input
             type="range"
             min={0}
-            max={200}
+            max={400}
             value={Math.round(peerVol * 100)}
             onChange={(e) => {
               const v = Number(e.target.value) / 100;
@@ -139,6 +161,8 @@ export function VoiceGrid({
   startScreenShare,
   stopScreenShare,
   setPeerVolume,
+  toggleMaximize,
+  maximizedScreen,
 }: {
   userId: string;
   channel: Channel;
@@ -152,6 +176,8 @@ export function VoiceGrid({
   startScreenShare: () => Promise<void>;
   stopScreenShare: () => Promise<void>;
   setPeerVolume: (peerId: string, v: number) => void;
+  toggleMaximize: (target: string) => void;
+  maximizedScreen: string | null;
 }) {
   const {
     muted,
@@ -254,7 +280,8 @@ export function VoiceGrid({
             setPeerVolume={setPeerVolume}
           />
         ))}
-        {/* Screen-share tiles (local + remote), shown while sharing */}
+        {/* Screen-share tiles (local + remote) — a dedicated box, never
+            replacing the sharer's camera/avatar card */}
         {localScreen && (
           <Tile
             key="screen-self"
@@ -264,6 +291,8 @@ export function VoiceGrid({
             speaking={false}
             fill={theaterMode}
             screen
+            onMaximize={() => toggleMaximize(userId)}
+            maximized={maximizedScreen === userId}
           />
         )}
         {Object.entries(remoteScreens).map(([peerId, stream]) => (
@@ -275,6 +304,8 @@ export function VoiceGrid({
             speaking={false}
             fill={theaterMode}
             screen
+            onMaximize={() => toggleMaximize(peerId)}
+            maximized={maximizedScreen === peerId}
           />
         ))}
       </div>

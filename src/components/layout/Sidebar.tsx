@@ -17,6 +17,7 @@ import {
   ShieldIcon,
   SpeakerIcon,
   TrashIcon,
+  VolumeIcon,
   XIcon,
 } from "@/components/ui/icons";
 import { APP_VERSION } from "@/lib/version";
@@ -27,11 +28,13 @@ export function Sidebar({
   leaveVoice,
   speakingIds,
   isAdmin,
+  setPeerVolume,
 }: {
   joinVoice: (c: Channel) => Promise<void>;
   leaveVoice: () => Promise<void>;
   speakingIds: Set<string>;
   isAdmin: boolean;
+  setPeerVolume: (peerId: string, v: number) => void;
 }) {
   const {
     profile,
@@ -55,6 +58,10 @@ export function Sidebar({
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  // Per-user volume slider open state + values (local playback gain).
+  const [volFor, setVolFor] = useState<string | null>(null);
+  const peerVolumes = useAppStore((s) => s.peerVolumes);
+  const setStorePeerVolume = useAppStore((s) => s.setPeerVolume);
 
   const createChannel = async () => {
     const name = newName.trim();
@@ -273,30 +280,65 @@ export function Sidebar({
                   <ul className="mb-1 ml-6 space-y-0.5">
                     {members.map((m) => {
                       const talking = speakingIds.has(m.id);
+                      // Adjustable only for other members in the room I'm in.
+                      const canAdjust =
+                        voiceChannel?.id === c.id && m.id !== profile?.id;
+                      const vol = peerVolumes[m.id] ?? 1;
                       return (
-                        <li
-                          key={m.id}
-                          className="flex items-center gap-2 py-0.5 text-xs text-text-1"
-                        >
-                          {/* Real-time speaking glow in the theme accent */}
-                          <span
-                            className={`rounded-full ${talking ? "speaking" : ""}`}
-                          >
-                            <Avatar
-                              nickname={m.nickname}
-                              avatarUrl={m.avatar_url}
-                              size={18}
-                            />
-                          </span>
-                          <span
-                            className={`truncate ${
-                              talking ? "font-semibold text-accent" : ""
+                        <li key={m.id} className="text-xs text-text-1">
+                          <div
+                            onClick={() =>
+                              canAdjust &&
+                              setVolFor((v) => (v === m.id ? null : m.id))
+                            }
+                            className={`flex items-center gap-2 py-0.5 ${
+                              canAdjust ? "cursor-pointer hover:text-text-0" : ""
                             }`}
+                            title={canAdjust ? "Ses seviyesini ayarla" : undefined}
                           >
-                            {m.nickname}
-                          </span>
-                          {onlineIds.has(m.id) && (
-                            <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                            {/* Real-time speaking glow in the theme accent */}
+                            <span className={`rounded-full ${talking ? "speaking" : ""}`}>
+                              <Avatar
+                                nickname={m.nickname}
+                                avatarUrl={m.avatar_url}
+                                size={18}
+                              />
+                            </span>
+                            <span
+                              className={`truncate ${
+                                talking ? "font-semibold text-accent" : ""
+                              }`}
+                            >
+                              {m.nickname}
+                            </span>
+                            {canAdjust && vol !== 1 && (
+                              <span className="text-[9px] text-accent">
+                                {Math.round(vol * 100)}%
+                              </span>
+                            )}
+                            {onlineIds.has(m.id) && (
+                              <span className="ml-auto h-1.5 w-1.5 rounded-full bg-success" />
+                            )}
+                          </div>
+                          {canAdjust && volFor === m.id && (
+                            <div className="flex items-center gap-1 py-1 pl-6">
+                              <VolumeIcon width={11} height={11} className="text-text-1" />
+                              <input
+                                type="range"
+                                min={0}
+                                max={400}
+                                value={Math.round(vol * 100)}
+                                onChange={(e) => {
+                                  const v = Number(e.target.value) / 100;
+                                  setStorePeerVolume(m.id, v);
+                                  setPeerVolume(m.id, v);
+                                }}
+                                className="h-1 flex-1 accent-[var(--accent)]"
+                              />
+                              <span className="w-7 text-right text-[9px] tabular-nums text-text-1">
+                                {Math.round(vol * 100)}%
+                              </span>
+                            </div>
                           )}
                         </li>
                       );

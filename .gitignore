@@ -13,3 +13,6 @@ tauri_key.txt
 *.key.txt
 *.pub
 SECURITY-FIXES.md
+
+# local debug screenshots
+*_Hata_Console*.png

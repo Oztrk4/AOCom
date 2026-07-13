@@ -8,6 +8,7 @@ import { useRing } from "@/hooks/useRing";
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { useHeartbeat } from "@/hooks/useHeartbeat";
+import { useCleanExit } from "@/hooks/useCleanExit";
 import { playJoinChime, playLeaveChime } from "@/lib/sounds";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import { DragDropUpload } from "@/components/chat/DragDropUpload";
@@ -20,6 +21,7 @@ import { SettingsModal } from "@/components/settings/SettingsModal";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   MicOffIcon,
+  MinimizeIcon,
   PhoneIcon,
   PhoneOffIcon,
   XIcon,
@@ -41,6 +43,7 @@ export function Dashboard({
   useGlobalShortcuts();
   usePushToTalk();
   useHeartbeat(userId);
+  useCleanExit(userId);
 
   const rtc = useWebRTC(userId);
   const voiceChannel = useAppStore((s) => s.voiceChannel);
@@ -58,6 +61,7 @@ export function Dashboard({
   const micLevel = useAppStore((s) => s.micLevel);
   const masterVolume = useAppStore((s) => s.masterVolume);
   const speakerDeviceId = useAppStore((s) => s.speakerDeviceId);
+  const maximizedScreen = rtc.maximizedScreen;
   const [voiceBanOpen, setVoiceBanOpen] = useState(false);
 
   const joinVoice = useCallback(
@@ -167,17 +171,55 @@ export function Dashboard({
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <Sidebar
           joinVoice={joinVoice}
           leaveVoice={leaveVoice}
           speakingIds={rtc.speakingIds}
           isAdmin={isAdminEmail(userEmail)}
+          setPeerVolume={rtc.setPeerVolume}
         />
         {/* Theater mode: chat collapses, the room grid takes the width */}
         {!(theaterMode && voiceChannel) && (
           <ChatArea userId={userId} isAdmin={isAdminEmail(userEmail)} />
         )}
+        {/* Maximized screen-share overlay (synced to all watchers) — covers
+            the center content column */}
+        {maximizedScreen &&
+          (() => {
+            const scrStream =
+              maximizedScreen === userId
+                ? rtc.localScreen
+                : rtc.remoteScreens[maximizedScreen];
+            if (!scrStream) return null;
+            const sharer = useAppStore.getState().profiles[maximizedScreen];
+            return (
+              <div className="absolute inset-0 z-40 flex flex-col bg-black/95">
+                <div className="flex h-9 shrink-0 items-center justify-between px-3 text-xs text-text-0">
+                  <span className="font-semibold">
+                    🖥️ {sharer?.nickname ?? "Ekran"} paylaşıyor
+                  </span>
+                  <button
+                    onClick={() => rtc.toggleMaximize(maximizedScreen)}
+                    className="rounded-md bg-bg-2/80 p-1 text-text-0 hover:bg-accent hover:text-bg-0"
+                    title="Küçült"
+                    aria-label="Küçült"
+                  >
+                    <MinimizeIcon width={14} height={14} />
+                  </button>
+                </div>
+                <video
+                  autoPlay
+                  playsInline
+                  muted
+                  ref={(el) => {
+                    if (el && el.srcObject !== scrStream) el.srcObject = scrStream;
+                  }}
+                  className="min-h-0 flex-1 bg-black object-contain"
+                />
+              </div>
+            );
+          })()}
         <aside
           className={`flex min-h-0 flex-col border-l border-edge bg-bg-1 ${
             theaterMode && voiceChannel ? "min-w-0 flex-1" : "w-80 shrink-0"
@@ -197,6 +239,8 @@ export function Dashboard({
               startScreenShare={rtc.startScreenShare}
               stopScreenShare={rtc.stopScreenShare}
               setPeerVolume={rtc.setPeerVolume}
+              toggleMaximize={rtc.toggleMaximize}
+              maximizedScreen={rtc.maximizedScreen}
             />
           ) : (
             <FriendsList

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { Avatar } from "@/components/ui/Avatar";
 import { PhoneIcon, SpeakerIcon } from "@/components/ui/icons";
@@ -17,6 +17,12 @@ export function FriendsList({
 }) {
   const { profiles, onlineIds, statuses, channels } = useAppStore();
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // Re-render every 30s so "X dk önce" ticks forward without a new event.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   const friends = Object.values(profiles)
     // Exclude self and fully banned (passive) members — they don't occupy

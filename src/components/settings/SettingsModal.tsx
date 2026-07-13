@@ -269,7 +269,7 @@ export function SettingsModal({
               <input
                 type="range"
                 min={0}
-                max={200}
+                max={400}
                 value={Math.round(micLevel * 100)}
                 onChange={(e) => setMicLevel(Number(e.target.value) / 100)}
                 className="h-1.5 w-full accent-[var(--accent)]"
@@ -285,7 +285,7 @@ export function SettingsModal({
               <input
                 type="range"
                 min={0}
-                max={200}
+                max={400}
                 value={Math.round(masterVolume * 100)}
                 onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
                 className="h-1.5 w-full accent-[var(--accent)]"

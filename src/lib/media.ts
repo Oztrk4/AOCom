@@ -11,6 +11,10 @@ export const MIC_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: true,
   noiseSuppression: true,
   autoGainControl: false,
+  // Lock capture to 48 kHz so it matches the 48 kHz AudioContext instantly —
+  // no resample "helium" pitch drift for the first seconds after joining.
+  sampleRate: 48000,
+  channelCount: 1,
 };
 
 export interface MicPipeline {
