@@ -1,11 +1,11 @@
 {
-  "version": "0.2.4",
-  "notes": "AOCom v0.2.4 — Ekran paylaşımı ve ses düzeltmeleri\n• Ekran paylaşımı artık ayrı bir kutu olarak görünüyor + Büyüt (tam ekran) düğmesi\n• Tek aktif ekran paylaşımı (yeni başlayan öncekini durdurur)\n• 'Helium' ses bozulması giderildi (48kHz kilidi)\n• Ses seviyesi %400'e çıkarıldı; sol kanal listesinden kişiye özel ses\n• Uygulama kapanınca ses odasından temiz çıkış; 'en son görülme' düzeltmesi",
-  "pub_date": "2026-07-13T20:05:00Z",
+  "version": "0.2.5",
+  "notes": "AOCom v0.2.5 — Tam Türkçe, ses ve düzen iyileştirmeleri\n• Uygulama baştan sona Türkçeleştirildi (menüler, ayarlar, ipuçları)\n• 'Helium/derin ses' kayması kalıcı olarak giderildi (Opus 48kHz SDP sabitleme)\n• Ekranı 'Büyüt' artık sadece sende tam ekran olur, başkalarını etkilemez\n• Profil ayarlarına 'Profil Resmini Kaldır' düğmesi eklendi",
+  "pub_date": "2026-07-13T20:45:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTFJUk83NjJtNnhRc3p6NElZNjFMMHowTWw1cnZQMm1JMHR6TGxmcXh4TWh0N1VTQ1lqUmVlVVd5M3BxaDhjeC8zcnBCVEt6OFFLUFh1bnoyL252NmdRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzOTYyMTk4CWZpbGU6QU9Db21fMC4yLjRfeDY0LXNldHVwLmV4ZQpxdmtyOTdKcVgvUEwzaDgyNXIyWUl6YU43ME1BUG8xMFR4YWM3TEdGUlhPa2UrSkNiSlUvdW9TaUpRL1FZWnNYdjh5eGYweko0RkxXZ01PMUM5TjBBdz09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.4/AOCom_0.2.4_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTNNWkF3dmMxUmRualJaUkp2ekl1OGI5SksvdW9MQ0ZUaXFsck9DWTJqWTlzR1pnRUpCb2E0eW12Z3JGZXhKVWhybThmaFFwbkpXL1NEUUlWWmVZbVE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzOTY1ODkxCWZpbGU6QU9Db21fMC4yLjVfeDY0LXNldHVwLmV4ZQpoUkZNTkk3VXNsWThmZzJ1OFJyYnRzd3lMRFk5aG5TY2NJbEdUV3IxN1pIbzhhSEFTT0ZhWXhqRTZRUDlwckVYbVBWQkVLVERQMjkxeTFGbjJVT3FDQT09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.5/AOCom_0.2.5_x64-setup.exe"
     }
   }
 }

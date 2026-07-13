@@ -40,7 +40,7 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
         className={`rounded p-1.5 transition-colors ${
           open ? "text-accent" : "text-text-1 hover:text-accent"
         }`}
-        aria-label="Emoji picker"
+        aria-label="Emoji seç"
       >
         <SmileIcon />
       </button>

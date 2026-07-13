@@ -117,7 +117,7 @@ function Tile({
       >
         {screen && "🖥️ "}
         {profile?.nickname ?? "…"}
-        {isSelf && " (you)"}
+        {isSelf && " (sen)"}
         {screen && " · Ekran"}
         {canAdjust && peerVol !== 1 && (
           <span className="ml-1 text-accent">{Math.round(peerVol * 100)}%</span>
@@ -234,7 +234,7 @@ export function VoiceGrid({
           🔊 {channel.name}
         </h3>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-text-1">{count} connected</span>
+          <span className="text-[10px] text-text-1">{count} bağlı</span>
           <button
             onClick={() => setTheaterMode(!theaterMode)}
             className={`rounded-md p-1.5 transition-colors ${
@@ -242,8 +242,8 @@ export function VoiceGrid({
                 ? "bg-accent-soft text-accent"
                 : "text-text-1 hover:bg-bg-2 hover:text-text-0"
             }`}
-            aria-label={theaterMode ? "Exit expanded layout" : "Expand layout"}
-            title={theaterMode ? "Back to chat view" : "Expand layout (theater)"}
+            aria-label={theaterMode ? "Geniş görünümden çık" : "Geniş görünüm"}
+            title={theaterMode ? "Sohbet görünümüne dön" : "Geniş görünüm (tiyatro)"}
           >
             {theaterMode ? (
               <CollapseIcon width={15} height={15} />
@@ -318,7 +318,7 @@ export function VoiceGrid({
             className={`rounded-full p-2.5 transition-colors ${
               muted ? "bg-danger text-white" : "bg-bg-2 text-text-0 hover:bg-bg-3"
             }`}
-            aria-label="Toggle microphone"
+            aria-label="Mikrofonu aç/kapat"
           >
             {muted ? <MicOffIcon /> : <MicIcon />}
           </button>
@@ -327,7 +327,7 @@ export function VoiceGrid({
             className={`rounded-full p-2.5 transition-colors ${
               deafened ? "bg-danger text-white" : "bg-bg-2 text-text-0 hover:bg-bg-3"
             }`}
-            aria-label="Toggle deafen"
+            aria-label="Sesi aç/kapat"
           >
             {deafened ? <HeadphonesOffIcon /> : <HeadphonesIcon />}
           </button>
@@ -338,7 +338,7 @@ export function VoiceGrid({
                 ? "bg-accent text-bg-0"
                 : "bg-bg-2 text-text-0 hover:bg-bg-3"
             }`}
-            aria-label="Toggle camera"
+            aria-label="Kamerayı aç/kapat"
           >
             {camOn ? <CamIcon /> : <CamOffIcon />}
           </button>
@@ -369,22 +369,22 @@ export function VoiceGrid({
           <button
             onClick={() => leaveVoice()}
             className="rounded-full bg-danger p-2.5 text-white transition-transform hover:scale-105"
-            aria-label="Disconnect"
+            aria-label="Bağlantıyı kes"
           >
             <PhoneOffIcon />
           </button>
         </div>
         <div className="flex items-center justify-center gap-2 text-[11px] text-text-1">
-          <label htmlFor="quality">Cam quality</label>
+          <label htmlFor="quality">Kamera kalitesi</label>
           <select
             id="quality"
             value={quality}
             onChange={(e) => setQuality(e.target.value as VideoQuality)}
             className="rounded-md border border-edge bg-bg-2 px-2 py-1 text-xs text-text-0 outline-none focus:border-accent"
           >
-            <option value="360p">360p · save FPS</option>
-            <option value="480p">480p · balanced</option>
-            <option value="720p">720p · crisp</option>
+            <option value="360p">360p · FPS koru</option>
+            <option value="480p">480p · dengeli</option>
+            <option value="720p">720p · net</option>
           </select>
         </div>
       </div>

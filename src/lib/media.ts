@@ -13,8 +13,8 @@ export const MIC_CONSTRAINTS: MediaTrackConstraints = {
   autoGainControl: false,
   // Lock capture to 48 kHz so it matches the 48 kHz AudioContext instantly —
   // no resample "helium" pitch drift for the first seconds after joining.
+  // (Opus is additionally pinned to 48 kHz via SDP munging.)
   sampleRate: 48000,
-  channelCount: 1,
 };
 
 export interface MicPipeline {
@@ -147,14 +147,14 @@ export function describeMediaError(err: unknown): string {
   switch (name) {
     case "NotAllowedError":
     case "PermissionDeniedError":
-      return "Microphone access is blocked. Use “Reset Media Permissions” in Settings to re-request it.";
+      return "Mikrofon erişimi engelli. Ayarlar’dan “Medya İzinlerini Sıfırla”yı kullan.";
     case "NotFoundError":
     case "DevicesNotFoundError":
-      return "No microphone detected. Plug one in and try again.";
+      return "Mikrofon bulunamadı. Bir mikrofon tak ve tekrar dene.";
     case "NotReadableError":
-      return "The microphone is busy in another app. Close it and retry.";
+      return "Mikrofon başka bir uygulamada meşgul. Kapat ve tekrar dene.";
     default:
-      return "Could not start the microphone. Check your audio devices and retry.";
+      return "Mikrofon başlatılamadı. Ses aygıtlarını kontrol edip tekrar dene.";
   }
 }
 

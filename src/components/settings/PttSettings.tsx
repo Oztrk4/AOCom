@@ -5,8 +5,8 @@ import { codeToAccelerator, isMouseKey, mouseButtonToKey } from "@/lib/keybinds"
 import type { InputMode } from "@/lib/types";
 
 const MODES: { id: InputMode; label: string; desc: string }[] = [
-  { id: "voice", label: "Voice Activity", desc: "Otomatik — mic is always open" },
-  { id: "ptt", label: "Push-to-Talk", desc: "Bas Konuş — hold a key to speak" },
+  { id: "voice", label: "Ses Etkinliği", desc: "Otomatik — mikrofon her zaman açık" },
+  { id: "ptt", label: "Push-to-Talk", desc: "Bas Konuş — konuşmak için tuşu basılı tut" },
 ];
 
 export function PttSettings() {
@@ -28,7 +28,7 @@ export function PttSettings() {
       const acc = codeToAccelerator(e.code);
       if (!acc) {
         setHint(
-          "That key can't be a global hotkey (bare modifiers/lock keys). Try a letter, digit, F-key or Space."
+          "Bu tuş global kısayol olamaz (yalnız değiştirici/kilit tuşları). Bir harf, rakam, F-tuşu veya Boşluk dene."
         );
         return;
       }
@@ -43,7 +43,7 @@ export function PttSettings() {
       e.stopPropagation();
       setPttKey(key);
       setHint(
-        "Heads-up: mouse side buttons only work while AOCom is focused — bind a keyboard key for in-game PTT."
+        "Not: fare yan tuşları yalnızca AOCom odaktayken çalışır — oyun içi PTT için bir klavye tuşu ata."
       );
       setRecording(false);
     };
@@ -57,9 +57,7 @@ export function PttSettings() {
 
   return (
     <div className="space-y-2">
-      <label className="block text-[10px] font-semibold text-text-1">
-        Input Mode
-      </label>
+      <label className="block text-[10px] font-semibold text-text-1">Giriş Modu</label>
       <div className="grid grid-cols-2 gap-2">
         {MODES.map((m) => (
           <button
@@ -79,7 +77,7 @@ export function PttSettings() {
 
       {inputMode === "ptt" && (
         <div className="flex items-center gap-2 pt-1">
-          <span className="text-[10px] font-semibold text-text-1">Shortcut</span>
+          <span className="text-[10px] font-semibold text-text-1">Kısayol</span>
           <span
             className={`min-w-[64px] rounded-md border px-3 py-1.5 text-center font-mono text-xs font-bold ${
               pttKey
@@ -87,7 +85,7 @@ export function PttSettings() {
                 : "border-edge bg-bg-3 text-text-1"
             }`}
           >
-            {recording ? "…" : (pttKey ?? "not set")}
+            {recording ? "…" : (pttKey ?? "atanmadı")}
           </span>
           <button
             onClick={() => {
@@ -100,7 +98,7 @@ export function PttSettings() {
                 : "bg-bg-3 text-text-0 hover:bg-accent-soft"
             }`}
           >
-            {recording ? "Press any key… (Esc cancels)" : "Record Keybind"}
+            {recording ? "Bir tuşa bas… (Esc iptal)" : "Tuş Ata"}
           </button>
         </div>
       )}
@@ -109,10 +107,10 @@ export function PttSettings() {
         <p className="text-[10px] leading-relaxed text-text-1">
           {hint ??
             (pttKey && !isMouseKey(pttKey)
-              ? `“${pttKey}” is reserved system-wide while AOCom runs — it works inside fullscreen games, but the game itself won't see it. Pick a key you don't use in-game.`
+              ? `“${pttKey}” AOCom çalışırken sistem genelinde rezervedir — tam ekran oyunlarda çalışır ama oyun bu tuşu görmez. Oyun içinde kullanmadığın bir tuş seç.`
               : pttKey
-                ? "Mouse side buttons only work while AOCom is focused — bind a keyboard key for in-game PTT."
-                : "Record a key to activate Push-to-Talk. Until then your mic stays muted in PTT mode.")}
+                ? "Fare yan tuşları yalnızca AOCom odaktayken çalışır — oyun içi PTT için bir klavye tuşu ata."
+                : "Push-to-Talk için bir tuş ata. Atanana kadar PTT modunda mikrofonun kapalı kalır.")}
         </p>
       )}
     </div>

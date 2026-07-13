@@ -19,7 +19,7 @@ export function Titlebar({ compact = false }: { compact?: boolean }) {
         <button
           onClick={minimizeWindow}
           className="flex h-full w-10 items-center justify-center text-text-1 transition-colors hover:bg-bg-2 hover:text-text-0"
-          aria-label="Minimize"
+          aria-label="Küçült"
         >
           <MinusIcon width={14} height={14} />
         </button>
@@ -27,7 +27,7 @@ export function Titlebar({ compact = false }: { compact?: boolean }) {
           <button
             onClick={toggleMaximizeWindow}
             className="flex h-full w-10 items-center justify-center text-text-1 transition-colors hover:bg-bg-2 hover:text-text-0"
-            aria-label="Maximize"
+            aria-label="Büyüt"
           >
             <SquareIcon width={12} height={12} />
           </button>
@@ -35,7 +35,7 @@ export function Titlebar({ compact = false }: { compact?: boolean }) {
         <button
           onClick={closeWindow}
           className="flex h-full w-10 items-center justify-center text-text-1 transition-colors hover:bg-danger hover:text-white"
-          aria-label="Close"
+          aria-label="Kapat"
         >
           <XIcon width={14} height={14} />
         </button>

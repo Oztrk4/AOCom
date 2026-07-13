@@ -96,11 +96,11 @@ export function ChatArea({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {loading && (
-          <p className="py-8 text-center text-xs text-text-1">Loading…</p>
+          <p className="py-8 text-center text-xs text-text-1">Yükleniyor…</p>
         )}
         {!loading && messages.length === 0 && (
           <p className="py-8 text-center text-xs text-text-1">
-            The beginning of #{activeTextChannel?.name}. Say something legendary.
+            #{activeTextChannel?.name} kanalının başlangıcı. Efsanevi bir şeyler yaz.
           </p>
         )}
         {messages.map((m, i) => {
@@ -127,7 +127,7 @@ export function ChatArea({
                 {!grouped && (
                   <p className="flex items-baseline gap-2">
                     <span className="text-sm font-bold text-accent">
-                      {author?.nickname ?? "Unknown"}
+                      {author?.nickname ?? "Bilinmeyen"}
                     </span>
                     <span className="text-[10px] text-text-1">
                       {fmtTime(m.created_at)}
@@ -144,7 +144,7 @@ export function ChatArea({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={m.attachment_url}
-                      alt="attachment"
+                      alt="ek"
                       className="mt-1.5 max-h-72 max-w-sm rounded-lg border border-edge object-contain"
                       draggable={false}
                     />
@@ -197,7 +197,7 @@ export function ChatArea({
             <button
               onClick={() => setFile(null)}
               className="ml-auto text-text-1 hover:text-danger"
-              aria-label="Remove attachment"
+              aria-label="Eki kaldır"
             >
               <XIcon width={12} height={12} />
             </button>
@@ -220,7 +220,7 @@ export function ChatArea({
             onClick={() => fileInputRef.current?.click()}
             disabled={chatBanned}
             className="rounded p-1.5 text-text-1 transition-colors hover:text-accent disabled:opacity-40 disabled:hover:text-text-1"
-            aria-label="Attach file"
+            aria-label="Dosya ekle"
           >
             <PaperclipIcon />
           </button>
@@ -236,7 +236,7 @@ export function ChatArea({
             placeholder={
               chatBanned
                 ? "Sohbet banı sebebiyle şu an mesaj gönderemezsiniz."
-                : `Message #${activeTextChannel?.name ?? ""}`
+                : `#${activeTextChannel?.name ?? ""} kanalına yaz…`
             }
             className={`flex-1 bg-transparent py-1.5 text-sm outline-none placeholder-text-1 select-text ${
               chatBanned ? "cursor-not-allowed placeholder-danger/70" : ""
@@ -248,7 +248,7 @@ export function ChatArea({
             onClick={submit}
             disabled={chatBanned || sending || (!draft.trim() && !file)}
             className="rounded p-1.5 text-accent transition-opacity disabled:opacity-30"
-            aria-label="Send"
+            aria-label="Gönder"
           >
             <SendIcon />
           </button>

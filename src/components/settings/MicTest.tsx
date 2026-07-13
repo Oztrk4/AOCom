@@ -54,7 +54,7 @@ export function MicTest({
         },
       });
     } catch {
-      setError("Couldn't open the microphone for the test.");
+      setError("Test için mikrofon açılamadı.");
       return;
     }
     streamRef.current = stream;
@@ -123,7 +123,7 @@ export function MicTest({
           }`}
         >
           <MicIcon width={13} height={13} />
-          {testing ? "Stop Test" : "Test Microphone"}
+          {testing ? "Testi Durdur" : "Mikrofonu Test Et"}
         </button>
         {/* Volume meter — flat matte fill, no glow */}
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg-3">
@@ -139,8 +139,7 @@ export function MicTest({
       </div>
       {testing && (
         <p className="text-[10px] text-text-1">
-          You should hear yourself now. This loopback is fully local — nobody
-          in a voice channel can hear it.
+          Kendini şimdi duymalısın. Bu geri döngü tamamen yerel — ses kanalındaki kimse duyamaz.
         </p>
       )}
       {error && <p className="text-[10px] text-danger">{error}</p>}

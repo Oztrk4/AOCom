@@ -71,12 +71,12 @@ export function UpdateChecker() {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-bg-0/80 backdrop-blur-sm">
       <div className="w-[420px] max-w-[90vw] rounded-2xl border border-edge bg-bg-1 p-5 shadow-2xl">
         <h2 className="mb-1 text-base font-bold">
-          Update available —{" "}
+          Güncelleme mevcut —{" "}
           <span className="text-accent">v{update.version}</span>
         </h2>
         <p className="mb-3 text-xs text-text-1">
-          You&apos;re on v{update.currentVersion}. The update installs in the
-          background and AOCom relaunches automatically.
+          Şu an v{update.currentVersion} sürümündesin. Güncelleme arka planda
+          kurulur ve AOCom otomatik olarak yeniden başlar.
         </p>
 
         {update.body && (
@@ -99,22 +99,22 @@ export function UpdateChecker() {
             </div>
             <p className="text-center text-[11px] text-text-1">
               {progress === 1
-                ? "Installing… relaunching in a moment"
-                : `Downloading… ${Math.round((progress ?? 0) * 100)}%`}
+                ? "Kuruluyor… birazdan yeniden başlıyor"
+                : `İndiriliyor… ${Math.round((progress ?? 0) * 100)}%`}
             </p>
           </div>
         ) : (
           <div className="flex items-center justify-end gap-2">
             {failed && (
               <span className="mr-auto text-[11px] text-danger">
-                Update failed — check your connection and retry.
+                Güncelleme başarısız — bağlantını kontrol edip tekrar dene.
               </span>
             )}
             <button
               onClick={() => setUpdate(null)}
               className="rounded-lg border border-edge px-3 py-2 text-xs font-semibold text-text-1 transition-colors hover:text-text-0"
             >
-              Later
+              Sonra
             </button>
             <button
               onClick={install}
@@ -124,7 +124,7 @@ export function UpdateChecker() {
                   "linear-gradient(135deg, var(--accent), var(--accent-2))",
               }}
             >
-              Update now
+              Şimdi güncelle
             </button>
           </div>
         )}

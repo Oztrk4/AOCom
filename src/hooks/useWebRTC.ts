@@ -32,6 +32,48 @@ const RTC_CONFIG: RTCConfiguration = {
 const SAMPLE_RATE = 48000;
 const log = (...a: unknown[]) => console.log("[aocom-voice]", ...a);
 
+/**
+ * SDP munging: pin the Opus codec to 48 kHz on both capture and playback so
+ * the browser never resamples mid-handshake (the "helium / deep voice"
+ * drift). Applied to every local and remote description before it is set.
+ */
+const OPUS_PARAMS = "maxplaybackrate=48000;sprop-maxcapturerate=48000;stereo=1;useinbandfec=1";
+function mungeOpus(sdp: string): string {
+  const lines = sdp.split("\r\n");
+  let pt: string | null = null;
+  for (const l of lines) {
+    const m = l.match(/^a=rtpmap:(\d+) opus\/48000/i);
+    if (m) {
+      pt = m[1];
+      break;
+    }
+  }
+  if (!pt) return sdp;
+  const keys = ["maxplaybackrate", "sprop-maxcapturerate", "stereo", "useinbandfec"];
+  const prefix = `a=fmtp:${pt} `;
+  let done = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith(prefix)) {
+      const kept = lines[i]
+        .slice(prefix.length)
+        .split(";")
+        .filter((kv) => kv && !keys.includes(kv.split("=")[0]));
+      lines[i] = prefix + [...kept, OPUS_PARAMS].join(";");
+      done = true;
+      break;
+    }
+  }
+  if (!done) {
+    for (let i = 0; i < lines.length; i++) {
+      if (new RegExp(`^a=rtpmap:${pt} opus`, "i").test(lines[i])) {
+        lines.splice(i + 1, 0, prefix + OPUS_PARAMS);
+        break;
+      }
+    }
+  }
+  return lines.join("\r\n");
+}
+
 type Signal =
   | { kind: "sdp"; description: RTCSessionDescriptionInit }
   | { kind: "ice"; candidate: RTCIceCandidateInit };
@@ -82,7 +124,6 @@ export function useWebRTC(userId: string | null) {
   const [localScreen, setLocalScreen] = useState<MediaStream | null>(null);
   const [remoteScreens, setRemoteScreens] = useState<Record<string, MediaStream>>({});
   const [speakingIds, setSpeakingIds] = useState<Set<string>>(new Set());
-  const [maximizedScreen, setMaximizedScreen] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
 
   const bumpRemote = useCallback((peerId: string, stream: MediaStream | null) => {
@@ -291,7 +332,9 @@ export function useWebRTC(userId: string | null) {
       pc.onnegotiationneeded = async () => {
         try {
           peer.makingOffer = true;
-          await pc.setLocalDescription();
+          const offer = await pc.createOffer();
+          if (offer.sdp) offer.sdp = mungeOpus(offer.sdp);
+          await pc.setLocalDescription(offer);
           if (pc.localDescription)
             sendSignal(peerId, { kind: "sdp", description: pc.localDescription });
         } catch (err) {
@@ -352,11 +395,14 @@ export function useWebRTC(userId: string | null) {
             (peer.makingOffer || pc.signalingState !== "stable");
           peer.ignoreOffer = !peer.polite && offerCollision;
           if (peer.ignoreOffer) return;
+          if (desc.sdp) desc.sdp = mungeOpus(desc.sdp); // pin remote Opus to 48k
           await pc.setRemoteDescription(desc);
           for (const cand of peer.pendingCandidates.splice(0))
             await pc.addIceCandidate(cand).catch(() => {});
           if (desc.type === "offer") {
-            await pc.setLocalDescription();
+            const answer = await pc.createAnswer();
+            if (answer.sdp) answer.sdp = mungeOpus(answer.sdp);
+            await pc.setLocalDescription(answer);
             if (pc.localDescription)
               sendSignal(peerId, { kind: "sdp", description: pc.localDescription });
           }
@@ -445,10 +491,6 @@ export function useWebRTC(userId: string | null) {
             stopScreenShareRef.current();
           reclassify(from);
         })
-        .on("broadcast", { event: "screen-max" }, ({ payload }) => {
-          const { target, on } = payload as { target: string; on: boolean };
-          setMaximizedScreen(on ? target : null);
-        })
         .on("presence", { event: "sync" }, () => {
           const ids = Object.keys(sig.presenceState()).filter((k) => k !== userId);
           for (const id of ids) createPeer(id);
@@ -528,7 +570,6 @@ export function useWebRTC(userId: string | null) {
     setLocalScreen(null);
     setRemoteScreens({});
     setSpeakingIds(new Set());
-    setMaximizedScreen(null);
     setConnected(false);
     if (sigRef.current) {
       await supabase.removeChannel(sigRef.current);
@@ -597,12 +638,7 @@ export function useWebRTC(userId: string | null) {
     track.stop();
     setLocalScreen(null);
     sendRoles();
-    sigRef.current?.send({
-      type: "broadcast",
-      event: "screen-max",
-      payload: { target: userId, on: false },
-    });
-  }, [sendRoles, userId]);
+  }, [sendRoles]);
   stopScreenShareRef.current = () => void stopScreenShareImpl();
 
   const startScreenShare = useCallback(async () => {
@@ -625,19 +661,6 @@ export function useWebRTC(userId: string | null) {
       p.pc.addTrack(track, screenStreamRef.current);
     sendRoles(); // announces our screenId → overrides any prior sharer
   }, [sendRoles, stopScreenShareImpl]);
-
-  const toggleMaximize = useCallback(
-    (target: string) => {
-      const on = maximizedScreen !== target;
-      setMaximizedScreen(on ? target : null);
-      sigRef.current?.send({
-        type: "broadcast",
-        event: "screen-max",
-        payload: { target, on },
-      });
-    },
-    [maximizedScreen]
-  );
 
   const applyQuality = useCallback(async (quality: VideoQuality) => {
     const track = camTrackRef.current;
@@ -725,7 +748,6 @@ export function useWebRTC(userId: string | null) {
     setMicEnabled,
     startScreenShare,
     stopScreenShare: stopScreenShareImpl,
-    toggleMaximize,
     applyMicLevel,
     applyMasterVolume,
     setPeerVolume,
@@ -735,7 +757,6 @@ export function useWebRTC(userId: string | null) {
     localScreen,
     remoteScreens,
     speakingIds,
-    maximizedScreen,
     connected,
   };
 }

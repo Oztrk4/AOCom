@@ -79,9 +79,9 @@ export function Sidebar({
 
   const deleteChannel = async (c: Channel) => {
     const ok = await nativeConfirm(
-      "Delete channel",
-      `Delete “${c.name}”? ${
-        c.type === "text" ? "All its messages are removed too." : ""
+      "Kanalı sil",
+      `“${c.name}” silinsin mi? ${
+        c.type === "text" ? "Tüm mesajları da silinir." : ""
       }`
     );
     if (!ok) return;
@@ -110,8 +110,8 @@ export function Sidebar({
             setNewName("");
           }}
           className="rounded p-0.5 text-text-1 transition-colors hover:bg-bg-2 hover:text-accent"
-          aria-label={`Create ${type} channel`}
-          title={`Create ${type} channel`}
+          aria-label={`${type === "text" ? "Metin" : "Ses"} kanalı oluştur`}
+          title={`${type === "text" ? "Metin" : "Ses"} kanalı oluştur`}
         >
           <PlusIcon width={13} height={13} />
         </button>
@@ -130,21 +130,21 @@ export function Sidebar({
             if (e.key === "Enter") void createChannel();
             if (e.key === "Escape") setAdding(null);
           }}
-          placeholder={type === "text" ? "new-channel" : "New Room"}
+          placeholder={type === "text" ? "yeni-kanal" : "Yeni Oda"}
           maxLength={32}
           className="min-w-0 flex-1 rounded-md border border-edge bg-bg-2 px-2 py-1 text-xs outline-none focus:border-accent select-text"
         />
         <button
           onClick={createChannel}
           className="rounded p-1 text-success hover:bg-bg-2"
-          aria-label="Confirm create"
+          aria-label="Oluşturmayı onayla"
         >
           <CheckIcon width={13} height={13} />
         </button>
         <button
           onClick={() => setAdding(null)}
           className="rounded p-1 text-text-1 hover:bg-bg-2"
-          aria-label="Cancel create"
+          aria-label="İptal"
         >
           <XIcon width={13} height={13} />
         </button>
@@ -162,7 +162,7 @@ export function Sidebar({
             setEditName(c.name);
           }}
           className="rounded p-1 text-text-1 hover:text-accent"
-          aria-label={`Rename ${c.name}`}
+          aria-label={`${c.name} yeniden adlandır`}
         >
           <PencilIcon width={11} height={11} />
         </button>
@@ -172,7 +172,7 @@ export function Sidebar({
             void deleteChannel(c);
           }}
           className="rounded p-1 text-text-1 hover:text-danger"
-          aria-label={`Delete ${c.name}`}
+          aria-label={`${c.name} sil`}
         >
           <TrashIcon width={11} height={11} />
         </button>
@@ -195,7 +195,7 @@ export function Sidebar({
       <button
         onClick={() => renameChannel(c.id)}
         className="rounded p-1 text-success hover:bg-bg-2"
-        aria-label="Confirm rename"
+        aria-label="Yeniden adlandırmayı onayla"
       >
         <CheckIcon width={12} height={12} />
       </button>
@@ -221,7 +221,7 @@ export function Sidebar({
       <div className="flex-1 space-y-6 overflow-y-auto p-3">
         {/* Text channels */}
         <section>
-          {sectionHeader("Text Channels", "text")}
+          {sectionHeader("Metin Kanalları", "text")}
           {addForm("text")}
           {textChannels.map((c) => (
             <div
@@ -246,7 +246,7 @@ export function Sidebar({
 
         {/* Voice channels */}
         <section>
-          {sectionHeader("Voice Channels", "voice")}
+          {sectionHeader("Ses Kanalları", "voice")}
           {addForm("voice")}
           {voiceChannels.map((c) => {
             const members = membersOf(c.id);
@@ -361,7 +361,7 @@ export function Sidebar({
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold">{profile?.nickname}</p>
           <p className="text-[10px] text-success">
-            {voiceChannel ? `Voice · ${voiceChannel.name}` : "Online"}
+            {voiceChannel ? `Ses · ${voiceChannel.name}` : "Çevrimiçi"}
           </p>
         </div>
         <button
@@ -369,7 +369,7 @@ export function Sidebar({
           className={`rounded p-1.5 transition-colors hover:bg-bg-2 ${
             muted ? "text-danger" : "text-text-1"
           }`}
-          aria-label="Toggle mute"
+          aria-label="Mikrofonu aç/kapat"
         >
           {muted ? <MicOffIcon width={15} height={15} /> : <MicIcon width={15} height={15} />}
         </button>
@@ -378,7 +378,7 @@ export function Sidebar({
           className={`rounded p-1.5 transition-colors hover:bg-bg-2 ${
             deafened ? "text-danger" : "text-text-1"
           }`}
-          aria-label="Toggle deafen"
+          aria-label="Sesi aç/kapat"
         >
           {deafened ? (
             <HeadphonesOffIcon width={15} height={15} />
@@ -390,8 +390,8 @@ export function Sidebar({
           <button
             onClick={() => setAdminOpen(true)}
             className="rounded p-1.5 text-text-1 transition-colors hover:bg-bg-2 hover:text-accent"
-            aria-label="Admin panel"
-            title="Admin Panel"
+            aria-label="Yönetici paneli"
+            title="Yönetici Paneli"
           >
             <ShieldIcon width={15} height={15} />
           </button>
@@ -399,7 +399,7 @@ export function Sidebar({
         <button
           onClick={() => setSettingsOpen(true)}
           className="rounded p-1.5 text-text-1 transition-colors hover:bg-bg-2 hover:text-text-0"
-          aria-label="Settings"
+          aria-label="Ayarlar"
         >
           <GearIcon width={15} height={15} />
         </button>

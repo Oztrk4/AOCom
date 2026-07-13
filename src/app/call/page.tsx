@@ -11,10 +11,10 @@ import { PhoneIcon, PhoneOffIcon } from "@/components/ui/icons";
  */
 function CallPopup() {
   const params = useSearchParams();
-  const nick = params.get("nick") ?? "Unknown";
+  const nick = params.get("nick") ?? "Bilinmeyen";
   const avatar = params.get("avatar") || null;
   const channelId = params.get("channel") ?? "";
-  const channelName = params.get("channelName") ?? "voice";
+  const channelName = params.get("channelName") ?? "ses";
 
   useEffect(() => {
     document.body.dataset.transparent = "true";
@@ -36,20 +36,20 @@ function CallPopup() {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-text-0">{nick}</p>
           <p className="truncate text-xs text-text-1">
-            is calling you · {channelName}
+            seni arıyor · {channelName}
           </p>
         </div>
         <button
           onClick={() => respond(true)}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-success text-bg-0 transition-transform hover:scale-110"
-          aria-label="Accept"
+          aria-label="Kabul et"
         >
           <PhoneIcon />
         </button>
         <button
           onClick={() => respond(false)}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-danger text-white transition-transform hover:scale-110"
-          aria-label="Decline"
+          aria-label="Reddet"
         >
           <PhoneOffIcon />
         </button>

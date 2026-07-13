@@ -72,7 +72,7 @@ export function AdminPanel({ userId }: { userId: string }) {
           <button
             onClick={() => setAdminOpen(false)}
             className="rounded p-1 text-text-1 hover:bg-bg-2 hover:text-text-0"
-            aria-label="Close admin panel"
+            aria-label="Yönetici panelini kapat"
           >
             <XIcon />
           </button>

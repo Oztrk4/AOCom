@@ -52,14 +52,14 @@ export function LoginScreen({
           className="mb-3 w-full max-w-[200px] select-none object-contain"
         />
         <p className="mb-8 text-sm text-text-1">
-          {mode === "login" ? "Welcome back, legend." : "Join the squad."}
+          {mode === "login" ? "Tekrar hoş geldin, efsane." : "Ekibe katıl."}
         </p>
 
         <form onSubmit={submit} className="w-full space-y-3">
           {mode === "register" && (
             <input
               className={inputCls}
-              placeholder="Nickname"
+              placeholder="Takma ad"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               maxLength={24}
@@ -69,7 +69,7 @@ export function LoginScreen({
           <input
             className={inputCls}
             type="email"
-            placeholder="Email"
+            placeholder="E-posta"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
@@ -78,7 +78,7 @@ export function LoginScreen({
           <input
             className={inputCls}
             type="password"
-            placeholder="Password"
+            placeholder="Parola"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={mode === "login" ? "current-password" : "new-password"}
@@ -100,7 +100,7 @@ export function LoginScreen({
               background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
             }}
           >
-            {busy ? "…" : mode === "login" ? "Log In" : "Create Account"}
+            {busy ? "…" : mode === "login" ? "Giriş Yap" : "Hesap Oluştur"}
           </button>
         </form>
 
@@ -112,12 +112,12 @@ export function LoginScreen({
           className="mt-6 text-xs text-text-1 transition-colors hover:text-accent"
         >
           {mode === "login"
-            ? "No account? Register →"
-            : "Already registered? Log in →"}
+            ? "Hesabın yok mu? Kayıt ol →"
+            : "Zaten üye misin? Giriş yap →"}
         </button>
       </div>
       <p className="pb-4 text-center text-[10px] text-text-1/60">
-        P2P encrypted · zero servers between you and the squad
+        P2P şifreli · seninle ekibin arasında sıfır sunucu
       </p>
     </div>
   );

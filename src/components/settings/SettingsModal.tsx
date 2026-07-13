@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAppStore } from "@/stores/app-store";
 import { Avatar } from "@/components/ui/Avatar";
-import { MicIcon, XIcon } from "@/components/ui/icons";
+import { MicIcon, TrashIcon, XIcon } from "@/components/ui/icons";
 import { resetMediaPipeline } from "@/lib/media";
 import { processAvatar } from "@/lib/image";
 import { nativeDialog } from "@/lib/tauri";
@@ -13,10 +13,10 @@ import { BannedUsersModal } from "./BannedUsersModal";
 import type { ThemeName } from "@/lib/types";
 
 const THEMES: { id: ThemeName; label: string; desc: string; swatch: string[] }[] = [
-  { id: "nordic",     label: "Nordic Matte",     desc: "Charcoal · slate blue",  swatch: ["#1e222a", "#81a1c1", "#88c0d0"] },
-  { id: "graphite",   label: "Graphite",         desc: "Industrial · ash white", swatch: ["#181818", "#d4d4d0", "#2a2a2a"] },
-  { id: "mutedcyber", label: "Muted Cyber",      desc: "Velvet · flat purple",   swatch: ["#0d0e15", "#9d8cd6", "#6d7fb8"] },
-  { id: "tactical",   label: "Tactical Emerald", desc: "Olive · military green", swatch: ["#1c1e1d", "#7a9464", "#a3a86b"] },
+  { id: "nordic",     label: "Nordic Mat",       desc: "Kömür · arduvaz mavisi",   swatch: ["#1e222a", "#81a1c1", "#88c0d0"] },
+  { id: "graphite",   label: "Grafit",           desc: "Endüstriyel · kül beyazı", swatch: ["#181818", "#d4d4d0", "#2a2a2a"] },
+  { id: "mutedcyber", label: "Sönük Cyber",      desc: "Kadife · düz mor",         swatch: ["#0d0e15", "#9d8cd6", "#6d7fb8"] },
+  { id: "tactical",   label: "Taktik Zümrüt",    desc: "Zeytin · askeri yeşil",    swatch: ["#1c1e1d", "#7a9464", "#a3a86b"] },
 ];
 
 const selectCls =
@@ -99,13 +99,13 @@ export function SettingsModal({
     await refreshDevices(); // labels populate once permission is live
     if (!result.ok) {
       await nativeDialog(
-        "Microphone still unavailable",
+        "Mikrofon hâlâ kullanılamıyor",
         `${result.error}\n\n` +
-          "How to fix it:\n" +
-          "1. Open Windows Settings → Privacy & security → Microphone.\n" +
-          "2. Turn ON “Microphone access” and “Let desktop apps access your microphone”.\n" +
-          "3. Make sure a microphone is plugged in and not disabled in Sound settings.\n" +
-          "4. Come back and press “Reset Media Permissions” again — no reinstall needed.",
+          "Nasıl düzeltilir:\n" +
+          "1. Windows Ayarları → Gizlilik ve güvenlik → Mikrofon'u aç.\n" +
+          "2. “Mikrofon erişimi” ve “Masaüstü uygulamalarının mikrofona erişmesine izin ver”i AÇ.\n" +
+          "3. Bir mikrofonun takılı ve Ses ayarlarında devre dışı olmadığından emin ol.\n" +
+          "4. Geri dönüp tekrar “Medya İzinlerini Sıfırla”ya bas — yeniden kurulum gerekmez.",
         "warning"
       );
     }
@@ -133,13 +133,38 @@ export function SettingsModal({
       setProfile({ ...profile, ...patch });
     } catch {
       await nativeDialog(
-        "Avatar upload failed",
-        "The image could not be processed or uploaded. Use a PNG/JPEG and check your connection.",
+        "Avatar yüklenemedi",
+        "Görsel işlenemedi veya yüklenemedi. PNG/JPEG kullan ve bağlantını kontrol et.",
         "error"
       );
     } finally {
       setAvatarBusy(false);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  };
+
+  /* ── Remove avatar: clear the DB field + delete the stored file ───── */
+  const removeAvatar = async () => {
+    if (!profile || !profile.avatar_url) return;
+    setAvatarBusy(true);
+    try {
+      const marker = "/object/public/attachments/";
+      const idx = profile.avatar_url.indexOf(marker);
+      if (idx >= 0) {
+        const path = profile.avatar_url.slice(idx + marker.length);
+        await supabase.storage.from("attachments").remove([path]).catch(() => {});
+      }
+      const patch = { avatar_url: null, updated_at: new Date().toISOString() };
+      const { error } = await supabase
+        .from("profiles")
+        .update(patch)
+        .eq("id", profile.id);
+      if (error) throw error;
+      setProfile({ ...profile, avatar_url: null });
+    } catch {
+      await nativeDialog("Hata", "Profil resmi kaldırılamadı.", "error");
+    } finally {
+      setAvatarBusy(false);
     }
   };
 
@@ -175,11 +200,11 @@ export function SettingsModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Settings</h2>
+          <h2 className="text-lg font-bold">Ayarlar</h2>
           <button
             onClick={() => setSettingsOpen(false)}
             className="rounded p-1 text-text-1 hover:bg-bg-2 hover:text-text-0"
-            aria-label="Close settings"
+            aria-label="Ayarları kapat"
           >
             <XIcon />
           </button>
@@ -187,7 +212,7 @@ export function SettingsModal({
 
         {/* Theme engine */}
         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-text-1">
-          Theme
+          Tema
         </h3>
         <div className="mb-6 grid grid-cols-4 gap-2">
           {THEMES.map((t) => (
@@ -217,40 +242,40 @@ export function SettingsModal({
 
         {/* Voice & Media */}
         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-text-1">
-          Voice &amp; Media
+          Ses ve Medya
         </h3>
         <div className="mb-6 space-y-3 rounded-xl border border-edge bg-bg-2 p-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-[10px] font-semibold text-text-1">
-                Audio Input (Microphone)
+                Ses Girişi (Mikrofon)
               </label>
               <select
                 value={micDeviceId ?? ""}
                 onChange={(e) => onInputChange(e.target.value)}
                 className={selectCls}
               >
-                <option value="">System default</option>
+                <option value="">Sistem varsayılanı</option>
                 {inputs.map((d, i) => (
                   <option key={d.deviceId} value={d.deviceId}>
-                    {deviceLabel(d, i, "Microphone")}
+                    {deviceLabel(d, i, "Mikrofon")}
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-[10px] font-semibold text-text-1">
-                Audio Output (Speakers)
+                Ses Çıkışı (Hoparlör)
               </label>
               <select
                 value={speakerDeviceId ?? ""}
                 onChange={(e) => onOutputChange(e.target.value)}
                 className={selectCls}
               >
-                <option value="">System default</option>
+                <option value="">Sistem varsayılanı</option>
                 {outputs.map((d, i) => (
                   <option key={d.deviceId} value={d.deviceId}>
-                    {deviceLabel(d, i, "Output")}
+                    {deviceLabel(d, i, "Çıkış")}
                   </option>
                 ))}
               </select>
@@ -310,17 +335,16 @@ export function SettingsModal({
               }}
             >
               <MicIcon width={15} height={15} />
-              {micStatus === "checking" ? "Requesting…" : "Reset Media Permissions"}
+              {micStatus === "checking" ? "İsteniyor…" : "Medya İzinlerini Sıfırla"}
             </button>
             {micStatus === "granted" && (
               <div className="mt-2 text-center">
                 <p className="text-xs text-success">
-                  Microphone access granted ✓ — join a voice channel and go.
+                  Mikrofon erişimi verildi ✓ — bir ses kanalına gir ve başla.
                 </p>
                 {micInputs.length > 0 && (
                   <p className="mt-1 truncate text-[10px] text-text-1">
-                    {micInputs.length} input{micInputs.length > 1 ? "s" : ""} ·{" "}
-                    {micInputs[0]}
+                    {micInputs.length} giriş · {micInputs[0]}
                   </p>
                 )}
               </div>
@@ -328,14 +352,14 @@ export function SettingsModal({
             {micStatus === "blocked" && (
               <div className="mt-2 space-y-2 text-center">
                 <p className="text-xs text-danger">
-                  Still unavailable — follow the steps in the dialog, then try
-                  again.
+                  Hâlâ kullanılamıyor — penceredeki adımları izle, sonra tekrar
+                  dene.
                 </p>
                 <button
                   onClick={() => window.location.reload()}
                   className="rounded-md border border-edge px-3 py-1.5 text-[11px] font-semibold text-text-1 transition-colors hover:text-text-0"
                 >
-                  Reload app
+                  Uygulamayı yenile
                 </button>
               </div>
             )}
@@ -344,10 +368,10 @@ export function SettingsModal({
 
         {/* Profile */}
         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-widest text-text-1">
-          Profile
+          Profil
         </h3>
         <div className="mb-6 space-y-3">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Avatar
               nickname={profile?.nickname ?? "?"}
               avatarUrl={profile?.avatar_url}
@@ -365,17 +389,28 @@ export function SettingsModal({
               disabled={avatarBusy}
               className="rounded-lg border border-edge bg-bg-2 px-3 py-2 text-xs font-semibold text-text-0 transition-colors hover:border-accent disabled:opacity-50"
             >
-              {avatarBusy ? "Processing…" : "Upload avatar"}
+              {avatarBusy ? "İşleniyor…" : "Avatar yükle"}
             </button>
-            <span className="text-[10px] text-text-1">
-              PNG/JPEG · auto-compressed to 128×128
+            {profile?.avatar_url && (
+              <button
+                onClick={removeAvatar}
+                disabled={avatarBusy}
+                className="flex items-center gap-1 rounded-lg border border-danger/40 px-3 py-2 text-xs font-semibold text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-50"
+                title="Profil resmini kaldır"
+              >
+                <TrashIcon width={13} height={13} />
+                Profil Resmini Kaldır
+              </button>
+            )}
+            <span className="w-full text-[10px] text-text-1">
+              PNG/JPEG · otomatik 128×128'e küçültülür
             </span>
           </div>
           <div className="flex gap-2">
             <input
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              placeholder="Nickname"
+              placeholder="Takma ad"
               maxLength={24}
               className="flex-1 rounded-lg border border-edge bg-bg-2 px-3 py-2 text-sm outline-none focus:border-accent select-text"
             />
@@ -384,7 +419,7 @@ export function SettingsModal({
               disabled={saving}
               className="rounded-lg bg-accent px-4 py-2 text-xs font-bold text-bg-0 transition-opacity disabled:opacity-50"
             >
-              {saved ? "Saved ✓" : saving ? "Saving…" : "Save"}
+              {saved ? "Kaydedildi ✓" : saving ? "Kaydediliyor…" : "Kaydet"}
             </button>
           </div>
         </div>
@@ -408,7 +443,7 @@ export function SettingsModal({
           onClick={() => signOut()}
           className="w-full rounded-lg border border-danger/40 py-2 text-xs font-bold text-danger transition-colors hover:bg-danger hover:text-white"
         >
-          Log out
+          Çıkış yap
         </button>
       </div>
 

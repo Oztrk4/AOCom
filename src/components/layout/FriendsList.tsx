@@ -46,7 +46,7 @@ export function FriendsList({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center border-b border-edge px-4">
         <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-1">
-          Friends — {friends.filter((f) => onlineIds.has(f.id)).length} online
+          Arkadaşlar — {friends.filter((f) => onlineIds.has(f.id)).length} çevrimiçi
         </h3>
       </div>
       <ul className="flex-1 space-y-0.5 overflow-y-auto p-2">
@@ -98,7 +98,7 @@ export function FriendsList({
                       <span className="text-accent">{voiceName}</span>
                     </>
                   ) : online ? (
-                    "Online"
+                    "Çevrimiçi"
                   ) : (
                     formatLastSeen(f.last_seen_at)
                   )}
@@ -111,8 +111,8 @@ export function FriendsList({
                     ring(f.id);
                   }}
                   className="hidden rounded-full bg-accent-soft p-2 text-accent transition-transform hover:scale-110 group-hover:block"
-                  aria-label={`Call ${f.nickname}`}
-                  title="Invite to voice"
+                  aria-label={`${f.nickname} ara`}
+                  title="Sese davet et"
                 >
                   <PhoneIcon width={14} height={14} />
                 </button>
@@ -122,7 +122,7 @@ export function FriendsList({
         })}
         {friends.length === 0 && (
           <p className="p-4 text-center text-xs text-text-1">
-            No squad members yet. Tell them to register!
+            Henüz kimse yok. Kayıt olmalarını söyle!
           </p>
         )}
       </ul>

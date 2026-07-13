@@ -61,7 +61,12 @@ export function Dashboard({
   const micLevel = useAppStore((s) => s.micLevel);
   const masterVolume = useAppStore((s) => s.masterVolume);
   const speakerDeviceId = useAppStore((s) => s.speakerDeviceId);
-  const maximizedScreen = rtc.maximizedScreen;
+  // Screen-share maximize is a LOCAL preference — never synced to peers.
+  const [maximizedScreen, setMaximizedScreen] = useState<string | null>(null);
+  const toggleMaximize = useCallback(
+    (target: string) => setMaximizedScreen((m) => (m === target ? null : target)),
+    []
+  );
   const [voiceBanOpen, setVoiceBanOpen] = useState(false);
 
   const joinVoice = useCallback(
@@ -126,6 +131,14 @@ export function Dashboard({
     void rtc.applyOutputSink(speakerDeviceId);
   }, [speakerDeviceId, rtc]);
 
+  // Auto-exit local fullscreen if that screen share ends.
+  useEffect(() => {
+    if (!maximizedScreen) return;
+    const stream =
+      maximizedScreen === userId ? rtc.localScreen : rtc.remoteScreens[maximizedScreen];
+    if (!stream) setMaximizedScreen(null);
+  }, [maximizedScreen, rtc.localScreen, rtc.remoteScreens, userId]);
+
   useEffect(() => {
     if (rtc.connected) void rtc.setCamera(camOn, quality);
   }, [camOn, rtc]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -153,18 +166,18 @@ export function Dashboard({
             }}
             className="shrink-0 rounded-md bg-accent px-3 py-1 text-[11px] font-bold text-bg-0 transition-opacity hover:opacity-90"
           >
-            Re-request access
+            Erişimi tekrar iste
           </button>
           <button
             onClick={() => window.location.reload()}
             className="shrink-0 rounded-md border border-edge px-3 py-1 text-[11px] font-semibold text-text-1 transition-colors hover:text-text-0"
           >
-            Reload app
+            Uygulamayı yenile
           </button>
           <button
             onClick={() => useAppStore.getState().setMicError(null)}
             className="shrink-0 rounded p-1 text-text-1 hover:text-text-0"
-            aria-label="Dismiss"
+            aria-label="Kapat"
           >
             <XIcon width={13} height={13} />
           </button>
@@ -200,7 +213,7 @@ export function Dashboard({
                     🖥️ {sharer?.nickname ?? "Ekran"} paylaşıyor
                   </span>
                   <button
-                    onClick={() => rtc.toggleMaximize(maximizedScreen)}
+                    onClick={() => setMaximizedScreen(null)}
                     className="rounded-md bg-bg-2/80 p-1 text-text-0 hover:bg-accent hover:text-bg-0"
                     title="Küçült"
                     aria-label="Küçült"
@@ -239,8 +252,8 @@ export function Dashboard({
               startScreenShare={rtc.startScreenShare}
               stopScreenShare={rtc.stopScreenShare}
               setPeerVolume={rtc.setPeerVolume}
-              toggleMaximize={rtc.toggleMaximize}
-              maximizedScreen={rtc.maximizedScreen}
+              toggleMaximize={toggleMaximize}
+              maximizedScreen={maximizedScreen}
             />
           ) : (
             <FriendsList
@@ -300,20 +313,20 @@ export function Dashboard({
           <div>
             <p className="text-sm font-bold">{incomingRing.fromNick}</p>
             <p className="text-xs text-text-1">
-              is calling · {incomingRing.channelName}
+              arıyor · {incomingRing.channelName}
             </p>
           </div>
           <button
             onClick={() => respondToRing(true)}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-success text-bg-0 hover:scale-110"
-            aria-label="Accept call"
+            aria-label="Aramayı kabul et"
           >
             <PhoneIcon width={16} height={16} />
           </button>
           <button
             onClick={() => respondToRing(false)}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-danger text-white hover:scale-110"
-            aria-label="Decline call"
+            aria-label="Aramayı reddet"
           >
             <PhoneOffIcon width={16} height={16} />
           </button>
