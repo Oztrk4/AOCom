@@ -63,8 +63,20 @@ export function useBootstrap(userId: string | null) {
         "postgres_changes",
         { event: "*", schema: "public", table: "active_status" },
         (payload) => {
-          if (payload.new && "user_id" in payload.new)
-            upsertStatus(payload.new as ActiveStatus);
+          if (payload.new && "user_id" in payload.new) {
+            const st = payload.new as ActiveStatus;
+            upsertStatus(st);
+            // Admin "Kanaldan At": our own voice session was cleared by
+            // someone else while we still think we're in a room → an admin
+            // kicked us. Signal the Dashboard to force-leave the pipeline.
+            if (
+              st.user_id === userId &&
+              !st.current_voice_channel &&
+              useAppStore.getState().voiceChannel
+            ) {
+              useAppStore.getState().setKickedFromVoice(true);
+            }
+          }
         }
       )
       .on(

@@ -21,6 +21,7 @@ import {
   ScreenShareOffIcon,
   VolumeIcon,
 } from "@/components/ui/icons";
+import { gainToUi, uiToGain } from "@/lib/volume";
 import type { Channel, VideoQuality } from "@/lib/types";
 
 function Tile({
@@ -33,6 +34,8 @@ function Tile({
   setPeerVolume,
   onMaximize,
   maximized = false,
+  isAdmin = false,
+  onKick,
 }: {
   id: string;
   stream: MediaStream | null;
@@ -47,6 +50,9 @@ function Tile({
   /** Screen-only: toggle the synced full-column maximize overlay. */
   onMaximize?: () => void;
   maximized?: boolean;
+  /** Admin: enables the "Kanaldan At" action in the tile popover. */
+  isAdmin?: boolean;
+  onKick?: (peerId: string) => void;
 }) {
   const profile = useAppStore((s) => s.profiles[id]);
   const peerVol = useAppStore((s) => s.peerVolumes[id] ?? 1);
@@ -55,14 +61,31 @@ function Tile({
   const [volOpen, setVolOpen] = useState(false);
 
   const canAdjust = !isSelf && !screen && !!setPeerVolume;
+  const canKick = isAdmin && !isSelf && !screen && !!onKick;
+  const canExpand = canAdjust || canKick;
 
+  // Show the <video> whenever a non-ended video track exists. We deliberately
+  // do NOT require `!muted`: a freshly received remote track (camera OR
+  // screen) reports muted:true until its first frame decodes, and the local
+  // camera track is always live — gating on muted left the element hidden and
+  // the tile blank even while frames were flowing.
   const hasVideo =
-    stream?.getVideoTracks().some((t) => t.readyState === "live" && !t.muted) ??
-    false;
+    stream?.getVideoTracks().some((t) => t.readyState !== "ended") ?? false;
 
   useEffect(() => {
     const el = videoRef.current;
-    if (el && stream && el.srcObject !== stream) el.srcObject = stream;
+    if (!el || !stream) return;
+    if (el.srcObject !== stream) el.srcObject = stream;
+    // Explicitly (re)start playback and swallow the benign AbortError raised
+    // when srcObject swaps mid-play. Relying on the autoPlay attribute alone
+    // occasionally leaves the element paused after a track swap → the camera
+    // light is on but the tile stays black.
+    const kick = () => void el.play().catch(() => {});
+    kick();
+    el.onloadedmetadata = kick;
+    return () => {
+      el.onloadedmetadata = null;
+    };
   }, [stream]);
 
   return (
@@ -109,39 +132,61 @@ function Tile({
         </button>
       )}
       <button
-        onClick={() => canAdjust && setVolOpen((o) => !o)}
+        onClick={() => canExpand && setVolOpen((o) => !o)}
         className={`absolute bottom-1.5 left-2 rounded bg-bg-0/70 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur ${
-          canAdjust ? "cursor-pointer hover:bg-bg-0/90" : "cursor-default"
+          canExpand ? "cursor-pointer hover:bg-bg-0/90" : "cursor-default"
         }`}
-        title={canAdjust ? "Ses seviyesini ayarla" : undefined}
+        title={
+          canAdjust
+            ? "Ses seviyesini ayarla"
+            : canKick
+              ? "Yönetici işlemleri"
+              : undefined
+        }
       >
         {screen && "🖥️ "}
         {profile?.nickname ?? "…"}
         {isSelf && " (sen)"}
         {screen && " · Ekran"}
         {canAdjust && peerVol !== 1 && (
-          <span className="ml-1 text-accent">{Math.round(peerVol * 100)}%</span>
+          <span className="ml-1 text-accent">{gainToUi(peerVol)}</span>
         )}
       </button>
-      {/* Inline per-user volume slider (local only, 0-200%) */}
-      {canAdjust && volOpen && (
-        <div className="absolute bottom-7 left-2 right-2 flex items-center gap-2 rounded-lg bg-bg-0/85 px-2 py-1.5 backdrop-blur">
-          <VolumeIcon width={12} height={12} className="text-text-1" />
-          <input
-            type="range"
-            min={0}
-            max={400}
-            value={Math.round(peerVol * 100)}
-            onChange={(e) => {
-              const v = Number(e.target.value) / 100;
-              setStorePeerVolume(id, v);
-              setPeerVolume?.(id, v);
-            }}
-            className="h-1 flex-1 accent-[var(--accent)]"
-          />
-          <span className="w-8 text-right text-[9px] tabular-nums text-text-1">
-            {Math.round(peerVol * 100)}%
-          </span>
+      {/* Inline popover: per-user volume (0-100 UI → 0-4.0 gain) + admin kick */}
+      {canExpand && volOpen && (
+        <div className="absolute bottom-7 left-2 right-2 space-y-1.5 rounded-lg bg-bg-0/85 px-2 py-1.5 backdrop-blur">
+          {canAdjust && (
+            <div className="flex items-center gap-2">
+              <VolumeIcon width={12} height={12} className="text-text-1" />
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={gainToUi(peerVol)}
+                onChange={(e) => {
+                  const v = uiToGain(Number(e.target.value));
+                  setStorePeerVolume(id, v);
+                  setPeerVolume?.(id, v);
+                }}
+                className="h-1 flex-1 accent-[var(--accent)]"
+              />
+              <span className="w-8 text-right text-[9px] tabular-nums text-text-1">
+                {gainToUi(peerVol)}
+              </span>
+            </div>
+          )}
+          {canKick && (
+            <button
+              onClick={() => {
+                setVolOpen(false);
+                onKick?.(id);
+              }}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md border border-danger/40 px-2 py-1 text-[10px] font-semibold text-danger transition-colors hover:bg-danger hover:text-white"
+            >
+              <PhoneOffIcon width={11} height={11} />
+              Kanaldan At
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -163,6 +208,7 @@ export function VoiceGrid({
   setPeerVolume,
   toggleMaximize,
   maximizedScreen,
+  kickFromChannel,
 }: {
   userId: string;
   channel: Channel;
@@ -178,6 +224,7 @@ export function VoiceGrid({
   setPeerVolume: (peerId: string, v: number) => void;
   toggleMaximize: (target: string) => void;
   maximizedScreen: string | null;
+  kickFromChannel: (targetId: string) => Promise<void>;
 }) {
   const {
     muted,
@@ -278,6 +325,8 @@ export function VoiceGrid({
             speaking={speakingIds.has(peerId)}
             fill={theaterMode}
             setPeerVolume={setPeerVolume}
+            isAdmin={isAdmin}
+            onKick={kickFromChannel}
           />
         ))}
         {/* Screen-share tiles (local + remote) — a dedicated box, never

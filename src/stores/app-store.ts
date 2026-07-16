@@ -50,6 +50,8 @@ interface AppState {
   adminOpen: boolean;
   /** Ban notice shown on the login screen after a forced sign-out. */
   banNotice: string | null;
+  /** Set true when an admin ejects us from voice → Dashboard force-leaves. */
+  kickedFromVoice: boolean;
 
   setProfile: (p: Profile | null) => void;
   setProfiles: (list: Profile[]) => void;
@@ -79,6 +81,7 @@ interface AppState {
   setPttActive: (v: boolean) => void;
   setAdminOpen: (v: boolean) => void;
   setBanNotice: (msg: string | null) => void;
+  setKickedFromVoice: (v: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -121,6 +124,7 @@ export const useAppStore = create<AppState>((set) => ({
   pttActive: false,
   adminOpen: false,
   banNotice: null,
+  kickedFromVoice: false,
 
   setProfile: (profile) => set({ profile }),
   setProfiles: (list) =>
@@ -181,6 +185,7 @@ export const useAppStore = create<AppState>((set) => ({
   setPttActive: (pttActive) => set({ pttActive }),
   setAdminOpen: (adminOpen) => set({ adminOpen }),
   setBanNotice: (banNotice) => set({ banNotice }),
+  setKickedFromVoice: (kickedFromVoice) => set({ kickedFromVoice }),
 }));
 
 /**

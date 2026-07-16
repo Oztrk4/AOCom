@@ -13,6 +13,7 @@ import {
   MicIcon,
   MicOffIcon,
   PencilIcon,
+  PhoneOffIcon,
   PlusIcon,
   ShieldIcon,
   SpeakerIcon,
@@ -21,6 +22,7 @@ import {
   XIcon,
 } from "@/components/ui/icons";
 import { APP_VERSION } from "@/lib/version";
+import { gainToUi, uiToGain } from "@/lib/volume";
 import type { Channel, ChannelType } from "@/lib/types";
 
 export function Sidebar({
@@ -29,12 +31,14 @@ export function Sidebar({
   speakingIds,
   isAdmin,
   setPeerVolume,
+  kickFromChannel,
 }: {
   joinVoice: (c: Channel) => Promise<void>;
   leaveVoice: () => Promise<void>;
   speakingIds: Set<string>;
   isAdmin: boolean;
   setPeerVolume: (peerId: string, v: number) => void;
+  kickFromChannel: (targetId: string) => Promise<void>;
 }) {
   const {
     profile,
@@ -280,21 +284,30 @@ export function Sidebar({
                   <ul className="mb-1 ml-6 space-y-0.5">
                     {members.map((m) => {
                       const talking = speakingIds.has(m.id);
+                      const isSelf = m.id === profile?.id;
                       // Adjustable only for other members in the room I'm in.
-                      const canAdjust =
-                        voiceChannel?.id === c.id && m.id !== profile?.id;
+                      const canAdjust = voiceChannel?.id === c.id && !isSelf;
+                      // Admin may eject anyone (in any room) but themselves.
+                      const canKick = isAdmin && !isSelf;
+                      const expandable = canAdjust || canKick;
                       const vol = peerVolumes[m.id] ?? 1;
                       return (
                         <li key={m.id} className="text-xs text-text-1">
                           <div
                             onClick={() =>
-                              canAdjust &&
+                              expandable &&
                               setVolFor((v) => (v === m.id ? null : m.id))
                             }
                             className={`flex items-center gap-2 py-0.5 ${
-                              canAdjust ? "cursor-pointer hover:text-text-0" : ""
+                              expandable ? "cursor-pointer hover:text-text-0" : ""
                             }`}
-                            title={canAdjust ? "Ses seviyesini ayarla" : undefined}
+                            title={
+                              canAdjust
+                                ? "Ses seviyesini ayarla"
+                                : canKick
+                                  ? "Yönetici işlemleri"
+                                  : undefined
+                            }
                           >
                             {/* Real-time speaking glow in the theme accent */}
                             <span className={`rounded-full ${talking ? "speaking" : ""}`}>
@@ -313,31 +326,52 @@ export function Sidebar({
                             </span>
                             {canAdjust && vol !== 1 && (
                               <span className="text-[9px] text-accent">
-                                {Math.round(vol * 100)}%
+                                {gainToUi(vol)}
                               </span>
                             )}
                             {onlineIds.has(m.id) && (
                               <span className="ml-auto h-1.5 w-1.5 rounded-full bg-success" />
                             )}
                           </div>
-                          {canAdjust && volFor === m.id && (
-                            <div className="flex items-center gap-1 py-1 pl-6">
-                              <VolumeIcon width={11} height={11} className="text-text-1" />
-                              <input
-                                type="range"
-                                min={0}
-                                max={400}
-                                value={Math.round(vol * 100)}
-                                onChange={(e) => {
-                                  const v = Number(e.target.value) / 100;
-                                  setStorePeerVolume(m.id, v);
-                                  setPeerVolume(m.id, v);
-                                }}
-                                className="h-1 flex-1 accent-[var(--accent)]"
-                              />
-                              <span className="w-7 text-right text-[9px] tabular-nums text-text-1">
-                                {Math.round(vol * 100)}%
-                              </span>
+                          {expandable && volFor === m.id && (
+                            <div className="space-y-1 py-1 pl-6">
+                              {canAdjust && (
+                                <div className="flex items-center gap-1">
+                                  <VolumeIcon
+                                    width={11}
+                                    height={11}
+                                    className="text-text-1"
+                                  />
+                                  <input
+                                    type="range"
+                                    min={0}
+                                    max={100}
+                                    value={gainToUi(vol)}
+                                    onChange={(e) => {
+                                      const v = uiToGain(Number(e.target.value));
+                                      setStorePeerVolume(m.id, v);
+                                      setPeerVolume(m.id, v);
+                                    }}
+                                    className="h-1 flex-1 accent-[var(--accent)]"
+                                  />
+                                  <span className="w-7 text-right text-[9px] tabular-nums text-text-1">
+                                    {gainToUi(vol)}
+                                  </span>
+                                </div>
+                              )}
+                              {canKick && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setVolFor(null);
+                                    void kickFromChannel(m.id);
+                                  }}
+                                  className="flex w-full items-center gap-1.5 rounded-md border border-danger/40 px-2 py-1 text-[10px] font-semibold text-danger transition-colors hover:bg-danger hover:text-white"
+                                >
+                                  <PhoneOffIcon width={11} height={11} />
+                                  Kanaldan At
+                                </button>
+                              )}
                             </div>
                           )}
                         </li>

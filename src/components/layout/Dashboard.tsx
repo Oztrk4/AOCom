@@ -27,6 +27,8 @@ import {
   XIcon,
 } from "@/components/ui/icons";
 import { requestMicAccess } from "@/lib/media";
+import { kickFromVoice } from "@/lib/admin";
+import { nativeConfirm } from "@/lib/tauri";
 import { isAdminEmail, type Channel } from "@/lib/types";
 
 export function Dashboard({
@@ -68,6 +70,20 @@ export function Dashboard({
     []
   );
   const [voiceBanOpen, setVoiceBanOpen] = useState(false);
+  const [kickNoticeOpen, setKickNoticeOpen] = useState(false);
+  const kickedFromVoice = useAppStore((s) => s.kickedFromVoice);
+  const isAdmin = isAdminEmail(userEmail);
+
+  // Admin action: eject a user from their voice channel (confirm first).
+  const kickFromChannel = useCallback(async (targetId: string) => {
+    const nick =
+      useAppStore.getState().profiles[targetId]?.nickname ?? "kullanıcı";
+    const ok = await nativeConfirm(
+      "Kanaldan At",
+      `${nick} ses kanalından atılsın mı?`
+    );
+    if (ok) await kickFromVoice(targetId);
+  }, []);
 
   const joinVoice = useCallback(
     async (channel: Channel) => {
@@ -131,6 +147,16 @@ export function Dashboard({
     void rtc.applyOutputSink(speakerDeviceId);
   }, [speakerDeviceId, rtc]);
 
+  // An admin kicked us from voice: tear the session down and explain why.
+  useEffect(() => {
+    if (!kickedFromVoice) return;
+    useAppStore.getState().setKickedFromVoice(false);
+    if (useAppStore.getState().voiceChannel) {
+      void leaveVoice();
+      setKickNoticeOpen(true);
+    }
+  }, [kickedFromVoice, leaveVoice]);
+
   // Auto-exit local fullscreen if that screen share ends.
   useEffect(() => {
     if (!maximizedScreen) return;
@@ -189,12 +215,13 @@ export function Dashboard({
           joinVoice={joinVoice}
           leaveVoice={leaveVoice}
           speakingIds={rtc.speakingIds}
-          isAdmin={isAdminEmail(userEmail)}
+          isAdmin={isAdmin}
           setPeerVolume={rtc.setPeerVolume}
+          kickFromChannel={kickFromChannel}
         />
         {/* Theater mode: chat collapses, the room grid takes the width */}
         {!(theaterMode && voiceChannel) && (
-          <ChatArea userId={userId} isAdmin={isAdminEmail(userEmail)} />
+          <ChatArea userId={userId} isAdmin={isAdmin} />
         )}
         {/* Maximized screen-share overlay (synced to all watchers) — covers
             the center content column */}
@@ -242,7 +269,7 @@ export function Dashboard({
             <VoiceGrid
               userId={userId}
               channel={voiceChannel}
-              isAdmin={isAdminEmail(userEmail)}
+              isAdmin={isAdmin}
               localStream={rtc.localStream}
               remoteStreams={rtc.remoteStreams}
               localScreen={rtc.localScreen}
@@ -254,12 +281,13 @@ export function Dashboard({
               setPeerVolume={rtc.setPeerVolume}
               toggleMaximize={toggleMaximize}
               maximizedScreen={maximizedScreen}
+              kickFromChannel={kickFromChannel}
             />
           ) : (
             <FriendsList
               userId={userId}
               sendRing={sendRing}
-              isAdmin={isAdminEmail(userEmail)}
+              isAdmin={isAdmin}
             />
           )}
         </aside>
@@ -269,11 +297,11 @@ export function Dashboard({
         <SettingsModal
           signOut={signOut}
           setMicDevice={rtc.setMicDevice}
-          isAdmin={isAdminEmail(userEmail)}
+          isAdmin={isAdmin}
         />
       )}
 
-      {adminOpen && isAdminEmail(userEmail) && <AdminPanel userId={userId} />}
+      {adminOpen && isAdmin && <AdminPanel userId={userId} />}
 
       {/* Voice-ban notice when a banned user tries to join a voice room */}
       {voiceBanOpen && (
@@ -291,6 +319,30 @@ export function Dashboard({
             </p>
             <button
               onClick={() => setVoiceBanOpen(false)}
+              className="rounded-lg bg-accent px-4 py-2 text-xs font-bold text-bg-0"
+            >
+              Tamam
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Kicked-from-voice notice */}
+      {kickNoticeOpen && (
+        <div
+          className="absolute inset-0 z-[60] flex items-center justify-center bg-bg-0/80 backdrop-blur-sm"
+          onClick={() => setKickNoticeOpen(false)}
+        >
+          <div
+            className="w-[380px] max-w-[90vw] rounded-2xl border border-edge bg-bg-1 p-6 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 text-4xl">👋</div>
+            <p className="mb-4 text-sm font-semibold text-text-0">
+              Bir yönetici seni ses kanalından çıkardı.
+            </p>
+            <button
+              onClick={() => setKickNoticeOpen(false)}
               className="rounded-lg bg-accent px-4 py-2 text-xs font-bold text-bg-0"
             >
               Tamam

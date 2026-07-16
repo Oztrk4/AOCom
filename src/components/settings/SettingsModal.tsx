@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { MicIcon, TrashIcon, XIcon } from "@/components/ui/icons";
 import { resetMediaPipeline } from "@/lib/media";
 import { processAvatar } from "@/lib/image";
+import { gainToUi, uiToGain } from "@/lib/volume";
 import { nativeDialog } from "@/lib/tauri";
 import { MicTest } from "./MicTest";
 import { PttSettings } from "./PttSettings";
@@ -288,15 +289,15 @@ export function SettingsModal({
               <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-text-1">
                 <span>Mikrofon Seviyesi (giden)</span>
                 <span className="tabular-nums text-text-0">
-                  {Math.round(micLevel * 100)}%
+                  {gainToUi(micLevel)}
                 </span>
               </div>
               <input
                 type="range"
                 min={0}
-                max={400}
-                value={Math.round(micLevel * 100)}
-                onChange={(e) => setMicLevel(Number(e.target.value) / 100)}
+                max={100}
+                value={gainToUi(micLevel)}
+                onChange={(e) => setMicLevel(uiToGain(Number(e.target.value)))}
                 className="h-1.5 w-full accent-[var(--accent)]"
               />
             </div>
@@ -304,15 +305,15 @@ export function SettingsModal({
               <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-text-1">
                 <span>Ana Ses Seviyesi (gelen)</span>
                 <span className="tabular-nums text-text-0">
-                  {Math.round(masterVolume * 100)}%
+                  {gainToUi(masterVolume)}
                 </span>
               </div>
               <input
                 type="range"
                 min={0}
-                max={400}
-                value={Math.round(masterVolume * 100)}
-                onChange={(e) => setMasterVolume(Number(e.target.value) / 100)}
+                max={100}
+                value={gainToUi(masterVolume)}
+                onChange={(e) => setMasterVolume(uiToGain(Number(e.target.value)))}
                 className="h-1.5 w-full accent-[var(--accent)]"
               />
             </div>

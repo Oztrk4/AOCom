@@ -1,11 +1,11 @@
 {
-  "version": "0.2.5",
-  "notes": "AOCom v0.2.5 — Tam Türkçe, ses ve düzen iyileştirmeleri\n• Uygulama baştan sona Türkçeleştirildi (menüler, ayarlar, ipuçları)\n• 'Helium/derin ses' kayması kalıcı olarak giderildi (Opus 48kHz SDP sabitleme)\n• Ekranı 'Büyüt' artık sadece sende tam ekran olur, başkalarını etkilemez\n• Profil ayarlarına 'Profil Resmini Kaldır' düğmesi eklendi",
-  "pub_date": "2026-07-13T20:45:00Z",
+  "version": "0.2.6",
+  "notes": "AOCom v0.2.6 — Medya düzeltmeleri ve yönetici kontrolleri\n• Ekran paylaşımı artık karşı taraflarda da görünüyor (yeniden anlaşma + render düzeltmesi)\n• Kamera açıkken siyah kalan önizleme düzeltildi\n• Ses seviyesi çubukları artık 0–100 gösteriyor (arka planda %400 güç korunur)\n• Yönetici: kişiye tıklayıp 'Kanaldan At' ile takılan/çevrimdışı kullanıcıyı sesten çıkarabilir",
+  "pub_date": "2026-07-13T21:30:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTNNWkF3dmMxUmRualJaUkp2ekl1OGI5SksvdW9MQ0ZUaXFsck9DWTJqWTlzR1pnRUpCb2E0eW12Z3JGZXhKVWhybThmaFFwbkpXL1NEUUlWWmVZbVE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgzOTY1ODkxCWZpbGU6QU9Db21fMC4yLjVfeDY0LXNldHVwLmV4ZQpoUkZNTkk3VXNsWThmZzJ1OFJyYnRzd3lMRFk5aG5TY2NJbEdUV3IxN1pIbzhhSEFTT0ZhWXhqRTZRUDlwckVYbVBWQkVLVERQMjkxeTFGbjJVT3FDQT09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.5/AOCom_0.2.5_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTQybTdSSTBISzkzczdpc3pGQkdYZjA0QndjV3dQek0zSkJ5MnhMZEFmaWhWcTE3SkNQVWc5b2lLL2FyN2VDSFdLNkxSNU8xdVBZNTZwbVV0NTdCQ0E4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MjIyNDE0CWZpbGU6QU9Db21fMC4yLjZfeDY0LXNldHVwLmV4ZQo1aHk5OFMvSW11TXpEQ2cwdkdpOTMxcFBza0pnSlNGQlBlZVpSNEs2dE1FdU9tbmh3NERPZUlLSG5GdHhId0F1anRydVlrbDR5TWNBaG1PSENzbWVDZz09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.6/AOCom_0.2.6_x64-setup.exe"
     }
   }
 }

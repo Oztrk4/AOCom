@@ -136,7 +136,19 @@ export function useWebRTC(userId: string | null) {
   }, []);
   const bumpLocal = useCallback(() => {
     const local = localStreamRef.current;
-    setLocalStream(local ? new MediaStream(local.getTracks()) : null);
+    if (!local) {
+      setLocalStream(null);
+      return;
+    }
+    // The self tile must show the CAMERA. The camera track lives on its own
+    // dedicated send-stream (camStreamRef), never on the mic stream, so we
+    // compose a fresh preview stream = mic audio + live camera video here.
+    // Without the camera track the self tile only ever saw the (muted) mic
+    // track → the "camera light on but blank preview" bug.
+    const tracks: MediaStreamTrack[] = [...local.getAudioTracks()];
+    if (camTrackRef.current && camTrackRef.current.readyState === "live")
+      tracks.push(camTrackRef.current);
+    setLocalStream(new MediaStream(tracks));
   }, []);
   const bumpScreen = useCallback((peerId: string, stream: MediaStream | null) => {
     setRemoteScreens((prev) => {
@@ -184,8 +196,13 @@ export function useWebRTC(userId: string | null) {
       }
       peer.stream = new MediaStream(cam);
       bumpRemote(peerId, peer.stream); // tile always present; shows avatar if no live video
-      const liveScr = scr.some((t) => t.readyState === "live" && !t.muted);
-      peer.screenStream = liveScr ? new MediaStream(scr) : null;
+      // Screen tile appears as soon as a non-ended screen track exists. A
+      // just-received remote track is transiently `muted:true` until the
+      // first frame lands, so gating on `!muted` (as we used to) hid the
+      // share from every peer even though frames were flowing — the tile
+      // must mount so its <video> can start pulling frames.
+      const hasScr = scr.some((t) => t.readyState !== "ended");
+      peer.screenStream = hasScr ? new MediaStream(scr) : null;
       bumpScreen(peerId, peer.screenStream);
     },
     [bumpRemote, bumpScreen]
@@ -329,12 +346,19 @@ export function useWebRTC(userId: string | null) {
       if (screenTrackRef.current && screenStreamRef.current)
         pc.addTrack(screenTrackRef.current, screenStreamRef.current);
 
+      // Fires whenever a track is added/removed (camera on, screen share
+      // start/stop) — this IS the renegotiation that pushes the new m-line
+      // to the remote so its ontrack fires. Guard on a stable signaling
+      // state so a mid-glare add doesn't throw; the perfect-negotiation
+      // logic in handleSignal resolves any offer collision.
       pc.onnegotiationneeded = async () => {
+        if (pc.signalingState !== "stable") return;
         try {
           peer.makingOffer = true;
           const offer = await pc.createOffer();
           if (offer.sdp) offer.sdp = mungeOpus(offer.sdp);
           await pc.setLocalDescription(offer);
+          log(peerId, "renegotiate → offer sent (tracks changed)");
           if (pc.localDescription)
             sendSignal(peerId, { kind: "sdp", description: pc.localDescription });
         } catch (err) {
