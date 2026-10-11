@@ -37,7 +37,7 @@
       "endpoints": [
         "https://raw.githubusercontent.com/Oztrk4/AOCom/main/update.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhCMUYyMUM5REYwREE2RDEKUldUUnBnM2Z5U0VmaTJ2NjJ2a3JPM0VBem9oRUZaMEMvODVKSnUwM2J3VGdFeUpKZHpad2p3aUsK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJGOTcxRTg1RjZGQTBGQjAKUldTd0QvcjJoUjZYdjc3SXRxQ1loZTgrR2ZuaE9hZS9IWUdPaEExYVNzalFqZVBNMmpFa29vR0QK",
       "windows": {
         "installMode": "quiet"
       }
