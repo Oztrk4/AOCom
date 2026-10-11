@@ -1,11 +1,11 @@
 {
-  "version": "0.2.6",
-  "notes": "AOCom v0.2.6 — Medya düzeltmeleri ve yönetici kontrolleri\n• Ekran paylaşımı artık karşı taraflarda da görünüyor (yeniden anlaşma + render düzeltmesi)\n• Kamera açıkken siyah kalan önizleme düzeltildi\n• Ses seviyesi çubukları artık 0–100 gösteriyor (arka planda %400 güç korunur)\n• Yönetici: kişiye tıklayıp 'Kanaldan At' ile takılan/çevrimdışı kullanıcıyı sesten çıkarabilir",
-  "pub_date": "2026-07-13T21:30:00Z",
+  "version": "0.2.7",
+  "notes": "AOCom v0.2.7",
+  "pub_date": "2026-10-11T15:06:20Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUnBnM2Z5U0VmaTQybTdSSTBISzkzczdpc3pGQkdYZjA0QndjV3dQek0zSkJ5MnhMZEFmaWhWcTE3SkNQVWc5b2lLL2FyN2VDSFdLNkxSNU8xdVBZNTZwbVV0NTdCQ0E4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg0MjIyNDE0CWZpbGU6QU9Db21fMC4yLjZfeDY0LXNldHVwLmV4ZQo1aHk5OFMvSW11TXpEQ2cwdkdpOTMxcFBza0pnSlNGQlBlZVpSNEs2dE1FdU9tbmh3NERPZUlLSG5GdHhId0F1anRydVlrbDR5TWNBaG1PSENzbWVDZz09Cg==",
-      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.6/AOCom_0.2.6_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTd0QvcjJoUjZYdjBkYkZrODJZSmRhci9hamgxTWN6TnJBTG9jYXlNUTFaVmVaS1I0QjhsakNMTHhYVXZKbWtudmhTZ1VRMHkxMllIQytuZkJRaDNzeTBjbFVpWmowc3dZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkxNzMxMTcwCWZpbGU6QU9Db21fMC4yLjdfeDY0LXNldHVwLmV4ZQpjMGF0OGF6eW1kY0tNY0xOYzVYYnltand6VkNkVmd1UzZubFM0WlBpSUo2TXNOQWp6ekE5b0w0a3JVWDVobFo1OVNVdmU5QXMyckJNeG1sMnE4LzZBdz09Cg==",
+      "url": "https://github.com/Oztrk4/AOCom/releases/download/v0.2.7/AOCom_0.2.7_x64-setup.exe"
     }
   }
 }
